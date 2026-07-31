@@ -71,6 +71,27 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
+## 🤖 Telegram Bot Configuration
+
+### 1. How to Set Up a Telegram Bot
+
+To run this pipeline interactively via Telegram, you must create a free bot and retrieve an API access token from Telegram’s official **BotFather**.
+
+#### Step 1: Create a Bot via `@BotFather`
+1. Open **Telegram** on your mobile device or desktop.
+2. Search for `@BotFather` (verify the official blue checkmark) and start a chat.
+3. Send the command:
+```text
+/newbot
+```
+4. Name Your Bot: Enter a display name when prompted (e.g., Executive CV Generator).
+5. Set Username: Choose a unique username ending in bot (e.g., my_executive_cv_bot).
+6. Save Your API Key: BotFather will reply with an API access token formatted like:
+```text
+7123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ
+```
+7. Now configure it in the next step 
+
 ## ⚙️ Configuration Setup
 Environment File (.env)
 Create a .env file in the root project directory:
@@ -188,4 +209,62 @@ Stop Daemon:
 ```text
 Bash
 launchctl unload ~/Library/LaunchAgents/com.user.cvbot.plist
+```
+
+## Testing through telegram
+### How to Test the Telegram Bot
+Activate your Python virtual environment and launch the listener script:
+```text
+Bash
+source .venv/bin/activate
+python main_bot.py
+```
+Open Telegram and navigate to your bot's chat.
+
+Send /start to verify connectivity.
+
+Send a valid LinkedIn Job Posting URL (e.g., https://www.linkedin.com/jobs/view/4429205456/).
+
+Send an invalid link (e.g., https://google.com or plain text) to verify that the guardrail instantly blocks malformed requests.
+
+### Expected Output in Telegram & Local Filesystem
+Interactive Telegram Chat Flow
+On /start:
+```text
+Plaintext
+👋 Executive CV Generator Ready!
+```
+Send a valid LinkedIn Job URL to generate your tailored CV and Cover Letter.
+On Invalid Input (e.g., plain text or general URLs):
+```text
+Plaintext
+⚠️ Invalid Link Format!
+```
+Please send a valid LinkedIn Job URL.
+📍 Format: [https://www.linkedin.com/jobs/view/](https://www.linkedin.com/jobs/view/)<JOB_ID>/
+On Valid LinkedIn Job Link (Immediate Processing Status):
+```text
+Plaintext
+🚀 Valid LinkedIn URL detected!
+⏳ Running local Ollama pipeline...
+```
+On Completion (Edits status message automatically):
+```text
+Plaintext
+✅ Process Completed Successfully!
+
+🎯 Role: Enterprise Architect
+🏢 Company: Posti Group Oyj
+
+⏱️ Total Pipeline Time: 0.45 mins
+
+📁 Files saved locally in output/
+Local Output Folder (output/)
+```
+Upon completion, four documents are automatically compiled and stored in your project's local output/ directory:
+```text
+📄 output/cv_postigroupoyj_enterprisearchitect.md (Raw Markdown CV)
+📕 output/cv_postigroupoyj_enterprisearchitect.pdf (Print-styled 2-page Executive CV)
+📄 output/cover_postigroupoyj_enterprisearchitect.md (Raw Markdown Cover Letter)
+📕 output/cover_postigroupoyj_enterprisearchitect.pdf (Print-styled Cover Letter PDF)
 ```
