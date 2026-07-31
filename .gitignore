@@ -4,6 +4,7 @@ venv/
 env/
 __pycache__/
 *.pyc
+.DS_Store
 
 # Environment Variables
 .env
