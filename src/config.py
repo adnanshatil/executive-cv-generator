@@ -10,6 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SOURCE_DIR = BASE_DIR / "source"
 OUTPUT_DIR = BASE_DIR / "output"
 LINKEDIN_DIR = BASE_DIR / "linkedin"
+LOG_DIR = BASE_DIR / "log"
 
 # Ensure output directories exist
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

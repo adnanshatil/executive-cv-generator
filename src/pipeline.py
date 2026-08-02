@@ -1,5 +1,7 @@
 import re
 import textwrap
+
+from .db import log_generation
 from .config import OUTPUT_DIR
 from .utils import Timer, load_source_file, save_text, save_pdf, clean_dashes
 from .scraper import fetch_job_requirements
@@ -129,6 +131,18 @@ def run_pipeline(input_param: str) -> dict:
 
         # Convert total pipeline time from seconds to minutes
         total_minutes = (metrics["cv_total_time"] + metrics["cover_total_time"]) / 60.0
+
+        # 📌 Log completion to history.json via src/db.py
+        log_generation(
+            company=company,
+            role=role,
+            linkedin_url=input_param.strip(),
+            cv_md=cv_md_path.name,
+            cv_pdf=cv_pdf_path.name,
+            cover_md=cover_md_path.name,
+            cover_pdf=cover_pdf_path.name,
+            exec_time=f"{total_minutes:.2f}"
+        )
 
         metrics["company"] = company
         metrics["role"] = role

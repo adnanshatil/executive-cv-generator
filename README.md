@@ -31,7 +31,8 @@ executive-cv-generator/
 │
 ├── linkedin/                   # 📁 Storage for raw scraped LinkedIn job descriptions
 ├── output/                     # 📁 Destination for generated CVs (.md/.pdf) & Cover Letters (.pdf)
-├── log/                        # 📁 Logs directory for daemon stdout & stderr
+├── log/                        # 📁 Logs directory for daemon stdout, stderr & history
+│   └── history.json            # 📊 JSON log mapping output files to original LinkedIn URLs
 │
 └── src/                        # 🧠 Core Application Package
     ├── __init__.py             # Package initializer
@@ -40,6 +41,7 @@ executive-cv-generator/
     ├── scraper.py              # LinkedIn HTML parser & URL validation guardrails
     ├── agents.py               # Ollama prompt engineering & response parsing
     └── pipeline.py             # Main orchestrator connecting scraper, agents & output generator
+    ├── db.py                   # 💾 History log manager (writes to log/history.json)
 ```
 
 ## 🛠️ Step-by-Step Environment Setup
@@ -267,4 +269,39 @@ Upon completion, four documents are automatically compiled and stored in your pr
 📕 output/cv_postigroupoyj_enterprisearchitect.pdf (Print-styled 2-page Executive CV)
 📄 output/cover_postigroupoyj_enterprisearchitect.md (Raw Markdown Cover Letter)
 📕 output/cover_postigroupoyj_enterprisearchitect.pdf (Print-styled Cover Letter PDF)
+📊 log/history.json (Structured history log)
+```
+
+# 📊 Job History (history.json) Sample Output
+```JSON
+[
+  {
+    "id": 1,
+    "timestamp": "2026-08-01 15:32:25",
+    "company": "ABB",
+    "role": "Systems Operations Specialist",
+    "linkedin_url": "https://www.linkedin.com/jobs/view/4447505488/",
+    "files": {
+      "cv_md": "cv_abb_systems_operations_specialist.md",
+      "cv_pdf": "cv_abb_systems_operations_specialist.pdf",
+      "cover_md": "cover_letter_abb_systems_operations_specialist.md",
+      "cover_pdf": "cover_letter_abb_systems_operations_specialist.pdf"
+    },
+    "execution_time_min": "6.22"
+  },
+  {
+    "id": 2,
+    "timestamp": "2026-08-01 15:37:03",
+    "company": "ABB",
+    "role": "Business Analyst Senior Manager",
+    "linkedin_url": "https://www.linkedin.com/jobs/view/4444343007/",
+    "files": {
+      "cv_md": "cv_abb_business_analyst_senior_manager.md",
+      "cv_pdf": "cv_abb_business_analyst_senior_manager.pdf",
+      "cover_md": "cover_letter_abb_business_analyst_senior_manager.md",
+      "cover_pdf": "cover_letter_abb_business_analyst_senior_manager.pdf"
+    },
+    "execution_time_min": "5.40"
+  }
+] 
 ```
