@@ -7,6 +7,7 @@ from telegram.request import HTTPXRequest
 from src.config import TELEGRAM_BOT_TOKEN
 from src.scraper import is_valid_linkedin_url
 from src.pipeline import run_pipeline
+from src.db import is_url_already_processed
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -33,6 +34,21 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "This bot strictly requires a valid LinkedIn job posting URL.\n\n"
             "📌 **Accepted Format:**\n"
             "`https://www.linkedin.com/jobs/view/<JOB_ID>/`",
+            parse_mode="Markdown"
+        )
+        return
+
+    # 2. Duplicate Check: Block execution if URL already exists in log/history.json
+    exists, record = is_url_already_processed(user_input)
+    if exists:
+        await update.message.reply_text(
+            f"ℹ️ **URL Already Processed!**\n\n"
+            f"🏢 **Company:** {record['company']}\n"
+            f"🎯 **Role:** {record['role']}\n"
+            f"📅 **Processed On:** `{record['timestamp']}`\n\n"
+            f"📄 **CV PDF:** `{record['files']['cv_pdf']}`\n"
+            f"✉️ **Cover Letter PDF:** `{record['files']['cover_pdf']}`\n\n"
+            f"📁 *Files are already saved in your `output/` directory.*",
             parse_mode="Markdown"
         )
         return
