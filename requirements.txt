@@ -3,3 +3,4 @@ requests
 beautifulsoup4
 markdown-pdf
 python-dotenv
+docxtpl

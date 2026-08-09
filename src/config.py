@@ -23,3 +23,6 @@ OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/chat")
 
 # In src/config.py
 CSS_FILE = SOURCE_DIR / "styles.css"
+
+# soffice path for LibreOffice CLI (if needed)
+SOFFICE_PATH = "/Applications/LibreOffice.app/Contents/MacOS/soffice"

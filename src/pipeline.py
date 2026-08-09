@@ -5,6 +5,7 @@ from .db import log_generation
 from .config import OUTPUT_DIR
 from .utils import Timer, load_source_file, save_text, save_pdf, clean_dashes
 from .scraper import fetch_job_requirements
+from .docx_utils import render_docx_template, parse_competencies_to_dict
 from . import agents
 
 def run_pipeline(input_param: str) -> dict:
@@ -18,25 +19,6 @@ def run_pipeline(input_param: str) -> dict:
         with Timer() as t_ingest:
             req_company, req_role, requirements = fetch_job_requirements(input_param)
         metrics["dur_ingest"] = t_ingest.duration
-
-        # Static CV data
-        static_cv_header_name = (
-            "Adnan Md. Shoeb Shatil\n"
-        )
-
-        static_cv_header_info = (
-            "Email       shoeb.shatil@gmail.com\n"
-            "Phone       +358(0)406850868\n"
-            "LinkedIn    linkedin.com/in/adnanshatil\n"
-            "Github      github.com/adnanshatil\n\n"
-        )
-
-        posti_experience_header = (
-            "Enterprise Architect\n"
-            "Posti Group Oyj\n"
-            "11/2024 - Present           Helsinki, Finland"
-        )
-
 
         # Load Source Data
         header_src = load_source_file("titlesummary.md")
@@ -88,36 +70,52 @@ def run_pipeline(input_param: str) -> dict:
         cover_md_path = OUTPUT_DIR / f"cover_letter_{clean_comp_fn}_{clean_role_fn}.md"
         cover_pdf_path = OUTPUT_DIR / f"cover_letter_{clean_comp_fn}_{clean_role_fn}.pdf"
 
-        # Save CV (Markdown Only)
+        # Convert Ollama output into a clean 4x3 row grid
+        comp_dict = parse_competencies_to_dict(out_2)
+
+        # .docx output generation
+        context = {
+            "title_line": meta["title_line"],
+            "summary": meta["summary"],            
+            "technical_competencies": out_3,
+            "professional_experience": out_4,
+            **comp_dict
+        }
+
         with Timer() as t_cv_compile:
-            final_cv = textwrap.dedent(f"""\
-# Adnan Md. Shoeb Shatil
-**{meta['title_line']}**
+            output_docx_path = OUTPUT_DIR / f"cv_{clean_comp_fn}_{clean_role_fn}.docx"
+            docx_path, pdf_path = render_docx_template(output_docx_path, context)
 
-**Email:** shoeb.shatil@gmail.com | **Phone:** +358(0)406850868\n
-**LinkedIn:** linkedin.com/in/adnanshatil | **Github:** github.com/adnanshatil
+#        # Save CV (Markdown Only)
+#        with Timer() as t_cv_compile:
+#             final_cv = textwrap.dedent(f"""\
+# # Adnan Md. Shoeb Shatil
+# **{meta['title_line']}**
+
+# **Email:** shoeb.shatil@gmail.com | **Phone:** +358(0)406850868\n
+# **LinkedIn:** linkedin.com/in/adnanshatil | **Github:** github.com/adnanshatil
 
 
 
-### EXECUTIVE SUMMARY
-{meta['summary']}
+# ### EXECUTIVE SUMMARY
+# {meta['summary']}
 
-### CORE COMPETENCIES
-{out_2}
+# ### CORE COMPETENCIES
+# {out_2}
 
-### TECHNICAL COMPETENCIES
-{out_3}
+# ### TECHNICAL COMPETENCIES
+# {out_3}
 
-### PROFESSIONAL EXPERIENCE
-#### - Enterprise Architect
-**Posti Group Oyj**         *11/2024 – Present | Helsinki, Finland*
-{out_4}
+# ### PROFESSIONAL EXPERIENCE
+# #### - Enterprise Architect
+# **Posti Group Oyj**         *11/2024 – Present | Helsinki, Finland*
+# {out_4}
 
-{static_footer}
-""").strip()
+# {static_footer}
+# """).strip()
 
-            save_text(cv_md_path, final_cv)
-            save_pdf(cv_pdf_path, final_cv)
+#             save_text(cv_md_path, final_cv)
+#             save_pdf(cv_pdf_path, final_cv)
         metrics["cv_total_time"] = t_1.duration + t_2.duration + t_3.duration + t_4.duration + t_cv_compile.duration
 
         # Save Cover Letter (PDF Only)
@@ -137,8 +135,10 @@ def run_pipeline(input_param: str) -> dict:
             company=company,
             role=role,
             linkedin_url=input_param.strip(),
-            cv_md=cv_md_path.name,
-            cv_pdf=cv_pdf_path.name,
+            cv_md=docx_path.name,        
+            cv_pdf=pdf_path.name,
+            # cv_md=cv_md_path.name,
+            # cv_pdf=cv_pdf_path.name,
             cover_md=cover_md_path.name,
             cover_pdf=cover_pdf_path.name,
             exec_time=f"{total_minutes:.2f}"
