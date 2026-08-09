@@ -43,7 +43,6 @@ def run_controller():
         now_str = time.strftime("%Y-%m-%d %H:%M:%S")
         log_msg = f"[{now_str}] ⏳ Previous generation is still running. Exiting safely.\n"
         
-        from src.config import LOG_DIR
         with open(LOG_DIR / "controller_empty_runs.log", "a", encoding="utf-8") as f:
             f.write(log_msg)
             
