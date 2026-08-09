@@ -8,7 +8,7 @@ from .scraper import fetch_job_requirements
 from .docx_utils import render_docx_template, parse_competencies_to_dict
 from . import agents
 
-def run_pipeline(input_param: str) -> dict:
+def run_pipeline(input_param: str = None, pre_company: str = None, pre_role: str = None, pre_requirements: str = None) -> dict:
     """
     Master orchestrator. Runs the entire pipeline and returns timing & output metrics.
     """
@@ -17,7 +17,12 @@ def run_pipeline(input_param: str) -> dict:
     with Timer() as t_total:
         # Step 0: Ingestion
         with Timer() as t_ingest:
-            req_company, req_role, requirements = fetch_job_requirements(input_param)
+            if pre_requirements:
+                req_company = pre_company
+                req_role = pre_role
+                requirements = pre_requirements
+            else:
+                req_company, req_role, requirements = fetch_job_requirements(input_param)
         metrics["dur_ingest"] = t_ingest.duration
 
         # Load Source Data

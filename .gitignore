@@ -17,3 +17,5 @@ log/
 # old codes
 cv_script.py
 telegram_bot.py
+token.json
+client_secret_*.apps.googleusercontent.com.json

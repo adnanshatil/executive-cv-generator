@@ -26,3 +26,19 @@ CSS_FILE = SOURCE_DIR / "styles.css"
 
 # soffice path for LibreOffice CLI (if needed)
 SOFFICE_PATH = os.getenv("SOFFICE_PATH", "")
+
+# APIfy token
+APIFY_TOKEN = os.getenv("APIFY_TOKEN", "")
+
+# Google Credentials path
+GOOGLE_CLIENT_SECRET_PATH = BASE_DIR / os.getenv("GOOGLE_CLIENT_SECRET_FILE", "client_secret_xxx.apps.googleusercontent.com.json")
+GOOGLE_TOKEN_PATH = BASE_DIR / "token.json"
+
+# Google API email
+GOOGLE_API_EMAIL = os.getenv("GOOGLE_API_EMAIL", "")
+
+# GoogleDrive folder ID for storing generated files
+GOOGLE_DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "")
+
+# GoogleSheet ID for storing generated files
+GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID", "")
