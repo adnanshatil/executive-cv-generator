@@ -1,4 +1,4 @@
-# 🚀 Executive CV & Cover Letter Generator (Ollama + gemma4:e4b + Telegram)
+# 🚀 Executive CV & Cover Letter Generator With Ollama + gemma4:e4b + Telegram (+ Google Drive & Google Sheet [optional])
 
 An automated, local AI-powered pipeline designed for **macOS**. It ingests LinkedIn job posting URLs, validates input links, extracts key architectural/engineering requirements, and generates tailored, ATS-optimized **Executive CVs** (`.md` & `.pdf`) and **Cover Letters** (`.md` & `.pdf`) using local LLM **(gemma4:e4b)** inference via **Ollama** and **Telegram Bot API**.
 
