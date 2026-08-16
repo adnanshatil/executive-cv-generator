@@ -35,8 +35,8 @@ def run_master_loop():
             subprocess.run([sys.executable, "main_controller.py"])
             last_controller_run = time.time()
             
-        # Sleep for 1 minute before checking the clocks again to save CPU
-        time.sleep(60)
+        # Sleep for 5 minute before checking the clocks again to save CPU
+        time.sleep(300)
 
 if __name__ == "__main__":
     try:

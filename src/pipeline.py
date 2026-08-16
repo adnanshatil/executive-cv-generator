@@ -39,8 +39,18 @@ def run_pipeline(input_param: str = None, pre_company: str = None, pre_role: str
         # Step 1: Metadata & Summary
         with Timer() as t_1:
             meta = agents.extract_metadata(requirements, header_src)
-            company = req_company if meta['company'] == "Target Company" else clean_dashes(meta['company'])
-            role = req_role if meta['role'] == "Target Position" else clean_dashes(meta['role'])
+            
+            # Prioritize explicit inputs (Google Sheet flow); fallback to LLM extractions (Telegram / CLI)
+            if req_company and req_company.strip() and req_company != "Target Company":
+                company = clean_dashes(req_company.strip())
+            else:
+                company = clean_dashes(meta.get('company', 'Target Company'))
+
+            if req_role and req_role.strip() and req_role != "Target Position":
+                role = clean_dashes(req_role.strip())
+            else:
+                role = clean_dashes(meta.get('role', 'Target Position'))
+
             anchor = f"TARGET COMPANY: {company}\nTARGET ROLE: {role}\nTITLE LINE: {meta['title_line']}\nSUMMARY: {meta['summary'][:350]}..."
         metrics["dur_1"] = t_1.duration
 
