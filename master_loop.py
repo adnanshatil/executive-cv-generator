@@ -5,27 +5,34 @@ import sys
 
 def run_master_loop():
     print("🚀 ATS Master Loop Started. Leave this terminal open!")
-    print("   - Scraper: Scheduled for 3:00 AM daily")
+    print("   - Daily 3:00 AM: Cleanup Discarded Folders -> Scraper Sync")
     print("   - Controller: Scheduled every 30 minutes")
     print("   - File Locks: Active (Safe from overlaps)")
     
-    last_scraper_run = None
-    # Set to 0 so the controller runs immediately on startup
+    last_daily_run = None
+    # Set to 0 so the controller checks for pending jobs immediately on startup
     last_controller_run = 0 
     
     while True:
         now = datetime.datetime.now()
         current_time = time.time()
         
-        # --- 1. Scraper Schedule (3:00 AM) ---
+        # --- 1. Daily Schedule (3:00 AM): Cleanup then Scrape ---
         if now.hour == 3:
-            # Check if we haven't run it yet today
-            if last_scraper_run is None or last_scraper_run.date() < now.date():
-                print(f"\n[{now.strftime('%H:%M:%S')}] ⏰ 3:00 AM reached. Triggering Scraper...")
+            # Check if we haven't run the daily routine today
+            if last_daily_run is None or last_daily_run.date() < now.date():
+                print(f"\n[{now.strftime('%H:%M:%S')}] ⏰ 3:00 AM reached. Starting daily maintenance...")
                 
-                # subprocess.run triggers the script exactly as if you typed it in the terminal
+                # Step A: Run Cleanup Script first
+                print(f"[{now.strftime('%H:%M:%S')}] 🧹 Step 1/2: Running Discarded Folders Cleanup...")
+                subprocess.run([sys.executable, "cleanup_discarded.py"])
+                
+                # Step B: Run Apify Scraper Sync
+                print(f"[{now.strftime('%H:%M:%S')}] 🕵️‍♂️ Step 2/2: Running LinkedIn Scraper Sync...")
                 subprocess.run([sys.executable, "-m", "src.scraper_sync"])
-                last_scraper_run = now
+                
+                last_daily_run = now
+                print(f"[{now.strftime('%H:%M:%S')}] ✨ Daily 3:00 AM maintenance cycle finished.")
         
         # --- 2. Controller Schedule (Every 30 Mins) ---
         # 1800 seconds = 30 minutes
@@ -35,7 +42,7 @@ def run_master_loop():
             subprocess.run([sys.executable, "main_controller.py"])
             last_controller_run = time.time()
             
-        # Sleep for 5 minute before checking the clocks again to save CPU
+        # Sleep for 5 minutes before checking the clock again to save CPU
         time.sleep(300)
 
 if __name__ == "__main__":

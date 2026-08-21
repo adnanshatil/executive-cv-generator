@@ -18,7 +18,7 @@ LINKEDIN_DIR.mkdir(parents=True, exist_ok=True)
 
 # Environment Variables
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma4:e4b")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma4:12b")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/chat")
 
 # In src/config.py

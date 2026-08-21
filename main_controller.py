@@ -148,8 +148,8 @@ def run_controller():
             
             update_job_status(row_num, "Generated")
             
-            print(f"🎉 Job {linkedin_id} fully processed! Taking a quick 5-minute breath...")
-            time.sleep(300) # Give the Mac Mini a brief pause before looping again
+            print(f"🎉 Job {linkedin_id} fully processed! Taking a quick 10-minute breath...")
+            time.sleep(600) # Give the Mac Mini a brief pause before looping again
             
         except Exception as e:
             print(f"❌ Error encountered: {e}")

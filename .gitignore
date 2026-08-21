@@ -13,6 +13,7 @@ __pycache__/
 output/
 linkedin/
 log/
+arch/
 
 # old codes
 cv_script.py

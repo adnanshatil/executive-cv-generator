@@ -12,16 +12,18 @@ def call_native_ollama(prompt: str, system_prompt: str = "You are an executive C
             {"role": "user", "content": prompt}
         ],
         "options": {
-            "num_ctx": 8192,
+            "num_ctx": 16384,
             "num_predict": 4096,
             "temperature": 0.20,
             "top_p": 0.95,
             "thinking": False
         },
+        "keep_alive": "1h",             # Keeps model loaded in VRAM for 1 hour
         "stream": False
     }
 
-    response = requests.post(OLLAMA_URL, json=payload, timeout=120)
+    # Use a higher read timeout (600s) to prevent drops during 16K ingestion
+    response = requests.post(OLLAMA_URL, json=payload, timeout=(30, 600))
     response.raise_for_status()
     raw_text = response.json().get("message", {}).get("content", "").strip()
     
@@ -35,7 +37,7 @@ def call_native_ollama(prompt: str, system_prompt: str = "You are an executive C
 def extract_metadata(requirements: str, header_source: str) -> dict:
     prompt = f"""
     Target Job Requirements:\n{requirements}\n\nCandidate Header & Base Summary:\n{header_source}
-    Instructions: Extract Company Name and Job Role. Write Title Line and Executive Summary (8-10 sentences).
+    Instructions: Extract Company Name and Job Role. Write Title Line and Executive Summary (4-5 sentences).
     Do NOT use long em-dashes (—). Use standard hyphens (-) if needed.
     OUTPUT FORMAT:
     COMPANY_NAME: [Extracted Company]
@@ -61,8 +63,7 @@ def generate_core_competencies(requirements: str, anchor: str, core_source: str)
     return call_native_ollama(prompt, "Principal Enterprise Architect.")
 
 def generate_tech_stack(requirements: str, anchor: str, tech_source: str) -> str:
-    prompt = f"""
-    Target Job Requirements:
+    prompt = f"""Target Job Requirements:
     {requirements}
 
     Anchor Context:
@@ -72,10 +73,18 @@ def generate_tech_stack(requirements: str, anchor: str, tech_source: str) -> str
     {tech_source}
 
     INSTRUCTIONS:
-    1. Filter and reorganize the candidate's Master Technical Competencies to match the target job's priorities.
-    2. Output 7-8 skill categories formatted as `- Category: Values`. Elevate top job tech. Do NOT use long em-dashes (—).
-    3. Include all relevant tools, languages, and frameworks from the source file.
-    4. CRITICAL: Do NOT write paragraph explanations, meta-introductions, or recruiter summaries. Output ONLY markdown category headings and item lists.
+    1. Filter, prioritize, and reorganize the candidate's skills to match the target job's key tech stack.
+    2. Output exactly 8 to 10 categories.
+    3. Every category MUST be formatted on a SINGLE line as: `- Category: value1, value2, value3`.
+    4. Values within each category MUST be comma-separated on that same line.
+    5. Do NOT create multi-line bullet points or line breaks for items under a category.
+    6. Do NOT use markdown section headers (`###`), em-dashes (`—`), introductions, or notes. Output ONLY the lines.
+
+    EXACT OUTPUT FORMAT TEMPLATE:
+    - Cloud & Infrastructure: AWS, Azure, GCP, Kubernetes, Docker, Terraform
+    - Architecture & Design: Microservices, Event-Driven Architecture, Domain-Driven Design (DDD), TOGAF
+    - Programming & Scripting: Python, TypeScript, Go, Java, Bash, SQL
+    - CI/CD & Automation: GitHub Actions, GitLab CI, ArgoCD, Helm, Ansible
     """
     return call_native_ollama(prompt, "Senior technical recruiter.")
 

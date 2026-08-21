@@ -10,8 +10,8 @@ RabbitMQ, RESTful APIs, OpenAPI Contracts, Event-Driven Architecture (EDA), Apac
 Cloud Computing Environments- 
 Amazon Web Services (AWS), Microsoft Azure, Serverless Topologies, Container Orchestration (Kubernetes/Docker), Hybrid Cloud Networks
 
-SDLC, DevOps & Automation- 
-CI/CD Pipelines, GitOps, Golden Path Frameworks, AI-Powered Workflow Automation, Agentic AI Orchestration, Infrastructure as Code (IaC), DevOps Practices
+SDLC, DevOps- 
+CI/CD Pipelines, GitOps, Golden Path Frameworks, Infrastructure as Code (IaC), DevOps Practices
 
 Financial & Enterprise Systems- 
 Anaplan Integration Architectures, SAP S/4HANA Core, SAP BRIM (Billing Revenue Innovation Management), Oracle NetSuite, Order-to-Cash (O2C) Engines, Financial Data Warehousing
@@ -24,3 +24,6 @@ Secure FTP (sFTP), EDI, EDIFACT, XML, JSON, IFTMIN Standard, IFCSUM Routing, WAY
 
 Delivery Frameworks- 
 SAFe (Scaled Agile Framework), BizDevOps Lifecycle Controls, Scrum, Agile Cross-Functional Governance
+
+AI & Automation-
+AI-Powered Workflow Automation, Agentic AI Orchestration, MCP, LangChain, LangGraph, MLOps, RAG, LLM Training, Vector DB
