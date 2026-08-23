@@ -32,6 +32,7 @@ Besides you can connect it to your telegram and post LinkedIn link to it for pro
 
 ## 🏛 Architecture Overview
 
+```text
 ========================================================================================================
                               AUTONOMOUS ATS INTELLIGENCE ENGINE ARCHITECTURE
 ========================================================================================================
@@ -104,7 +105,7 @@ Besides you can connect it to your telegram and post LinkedIn link to it for pro
 │                                         │ - Instant PDF Dispatch    │                               │
 │                                         └───────────────────────────┘                               │
 └─────────────────────────────────────────────────────────────────────────────────────────────────────┘
-
+```
 
 ---
 
