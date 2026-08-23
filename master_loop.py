@@ -18,7 +18,7 @@ def run_master_loop():
         current_time = time.time()
         
         # --- 1. Daily Schedule (3:00 AM): Cleanup then Scrape ---
-        if now.hour == 11:
+        if now.hour == 3:
             # Check if we haven't run the daily routine today
             if last_daily_run is None or last_daily_run.date() < now.date():
                 print(f"\n[{now.strftime('%H:%M:%S')}] ⏰ 3:00 AM reached. Starting daily maintenance...")
