@@ -209,3 +209,14 @@ def extract_id(url_or_id: str) -> str:
     if "id=" in clean_str:
         return clean_str.split("id=")[1].split("&")[0]
     return clean_str
+
+def purge_discarded_job_row(row_number: int):
+    """
+    Updates status to 'Deleted' and clears Scraped Info (G), CV Link (H),
+    Cover Letter Link (I), and Folder Link (J).
+    """
+    sheet = get_sheet()
+    sheet.update_cell(row_number, 1, "Deleted")  # Column A (Status)
+    
+    # Batch clear columns G to J (Columns 7, 8, 9, 10)
+    sheet.update(f"G{row_number}:J{row_number}", [["", "", "", ""]])

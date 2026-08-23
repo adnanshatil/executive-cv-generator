@@ -2,7 +2,7 @@ import time
 from .google_services import (
     get_sheet,
     get_drive_service,
-    update_job_status
+    purge_discarded_job_row
 )
 
 def extract_id(url_or_id: str) -> str:
@@ -50,15 +50,15 @@ def run_cleanup():
                 folder_id = extract_id(folder_link)
                 print(f"   Deleting Google Drive folder: {linkedin_id} - {folder_id}...")
                 deleted = delete_drive_folder(drive_service, folder_id)
-                # deleted = True  # Simulate deletion for safety
                 if deleted:
                     print("   ✅ Drive folder deleted successfully.")
             else:
                 print("   ℹ️ No Folder Link found for this row. Skipping Drive deletion.")
             
-            # Clear out the links from the sheet and mark as Purged
-            # Clear CV Link (Col 8), Cover Letter Link (Col 9), Scraped Info (Col 7)
-            update_job_status(idx, "Deleted")
+            # Clear out the links from the sheet and mark status as 'Deleted'
+            print(f"   📝 Purging links from Sheet (Row {idx})...")
+            purge_discarded_job_row(idx)
+            
             discarded_count += 1
             time.sleep(1)  # Avoid Google API rate limits
 
