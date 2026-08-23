@@ -1,307 +1,511 @@
-# 🚀 Executive CV & Cover Letter Generator With Ollama + gemma4:12b + Telegram (+ Google Drive & Google Sheet [optional])
+# 🤖 Autonomous ATS Resume & Cover Letter Intelligence Engine
 
-An automated, local AI-powered pipeline designed for **macOS**. It ingests LinkedIn job posting URLs, validates input links, extracts key architectural/engineering requirements, and generates tailored, ATS-optimized **Executive CVs** (`.md` & `.pdf`) and **Cover Letters** (`.md` & `.pdf`) using local LLM **(gemma4:e4b)** inference via **Ollama** and **Telegram Bot API**.
+An automated, local AI-driven recruitment and application generation pipeline. The system monitors job targets, scrapes postings from LinkedIn via Apify, indexes metadata and descriptions in Google Sheets and Google Drive, executes a multi-agent generation pipeline via local LLM inference (Ollama), and compiles tailored, ATS-optimized CVs and Cover Letters formatted into production-ready PDFs.
 
-> ⚠️ **macOS Disclaimer:**  
-> This application is optimized specifically for **macOS (Apple Silicon M-series)**. It relies on local Ollama inference and native macOS `launchd` service management. Ensure your Mac's energy settings prevent full system sleep if running the daemon 24/7.
+Besides you can connect it to your telegram and post LinkedIn link to it for producing CV and Cover Letter for youo.
+
 
 ---
 
-## 📁 Project Directory & Component Overview
+> ### ⚠️ System Hardware Disclaimer
+> **Target Platform:** Designed and benchmarked specifically for **Apple Silicon (macOS Sonoma / Sequoia)** with a baseline requirement of an **Apple Mac Mini M4 (16GB Unified Memory minimum)**.
+> 
+> Local LLM inference utilizes Apple Metal acceleration for models like `gemma4:12b`. Running on systems with less than 16GB unified memory or non-Metal architectures will lead to significant inference latency or memory pressure.
+
+---
+
+## 📑 Table of Contents
+1. [Architecture Overview](#-architecture-overview)
+2. [Project Structure](#-project-structure)
+3. [Prerequisites & System Toolchain Setup](#-prerequisites--system-toolchain-setup)
+4. [Ollama & Model Initialization](#-ollama--model-initialization)
+5. [Environment Variables & Configuration](#-environment-variables--configuration)
+6. [Google Cloud Platform & OAuth Setup](#-google-cloud-platform--oauth-setup)
+7. [Apify LinkedIn Scraper Configuration](#-apify-linkedin-scraper-configuration)
+8. [Telegram Bot Integration](#-telegram-bot-integration)
+9. [Git Setup & Ignore Rules](#-git-setup--ignore-rules)
+10. [Command-Line Usage & Execution Modes](#-command-line-usage--execution-modes)
+11. [24/7 Automation via macOS launchd](#-247-automation-via-macos-launchd)
+12. [Performance Tuning & Troubleshooting](#-performance-tuning--troubleshooting)
+
+---
+
+## 🏛 Architecture Overview
+
+========================================================================================================
+                              AUTONOMOUS ATS INTELLIGENCE ENGINE ARCHITECTURE
+========================================================================================================
+
+ [ 1. DAILY JOB INGESTION ]                     [ 2. CLOUD DASHBOARD & STORAGE ]
+ ┌────────────────────────┐                    ┌──────────────────────────────────────────────┐
+ │   LinkedIn Postings    │                    │  📊 Google Sheets Tracking Dashboard        │
+ └───────────┬────────────┘                    │  - Status: "Scraped" ➔ "Generate CV"         │
+             │ (3:00 AM Cron)                  │  - LinkedIn ID / URLs / PDF Artifact Links   │
+             ▼                                 └──────────────────────┬───────────────────────┘
+ ┌────────────────────────┐                                           │
+ │  🕷️ Apify Actor        │                                           │ Polls "Generate CV"
+ │ (cheap_scraper/actor)  │                                           │ every 30 mins
+ └───────────┬────────────┘                                           ▼
+             │ Scraped JSON Feed               ┌──────────────────────────────────────────────┐
+             ▼                                 │  📁 Google Drive Storage System              │
+ ┌────────────────────────┐                    │  - Root: /ATS_Resumes/                       │
+ │  scraper_sync.py       │───────────────────►│  - Subfolder: /[LinkedIn_ID]/                │
+ │  - Deduplication       │  Batch Appends &   │    ├── description.txt                       │
+ │  - Link Sanitization   │  Folder Creation   │    ├── Tailored_CV.pdf                       │
+ └────────────────────────┘                    │    └── Cover_Letter.pdf                      │
+                                               └──────────────────────┬───────────────────────┘
+                                                                      │ Fetches Job Spec
+                                                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ 3. ORCHESTRATION & SCHEDULING (master_loop.py / macOS launchd + caffeinate)                         │
+│   ├── 03:00 AM: cleanup_discarded.py ➔ Purges Drive folders for rows marked "Discarded" / "Deleted" │
+│   ├── 03:05 AM: scraper_sync.py      ➔ Ingests fresh postings from Apify & batch updates Sheet      │
+│   └── Every 30m: main_controller.py  ➔ Executes 5-agent generation pipeline for "Generate CV" jobs  │
+└──────────────────────────────────────────────────┬──────────────────────────────────────────────────┘
+                                                   │
+                                                   ▼
+┌───────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ 4. LOCAL MULTI-AGENT INFERENCE ENGINE (Apple Silicon M4 Metal Accelerated)                            │
+│                                                                                                       │
+│    Local Ollama Server (localhost:11434) ◄──────► Model: gemma4:12b (num_ctx: 4096 / keep_alive: 1h)  │
+│                                                                                                       │
+│    Candidate Source Base (source/):                                                                   │
+│    [titlesummary.md]   [corecompetencies.md]   [technicalcompetencies.md]   [experiences.md]          │
+│                                │                          │                        │                  │
+│                                ▼                          ▼                        ▼                  │
+│    ┌──────────────────┐  ┌──────────────────┐   ┌──────────────────┐   ┌───────────────────────┐      │
+│    │ Agent 1:         │  │ Agent 2:         │   │ Agent 3:         │   │ Agent 4:              │      │
+│    │ Target Metadata  │  │ Core Functional  │   │ Tech Skills &    │   │ Impact-Quantified     │      │
+│    │ & Exec Summary   │  │ Competencies     │   │ Category Stacks  │   │ Bullet Experience     │      │
+│    │                  │  │ **eliminated**   │   │                  │   │                       │      │  
+│    └────────┬─────────┘  └────────┬─────────┘   └────────┬─────────┘   └───────────┬───────────┘      │
+│             │                     │                      │                         │                  │
+│             └─────────────────────┴──────────┬───────────┴─────────────────────────┘                  │
+│                                              ▼                                                        │
+│                                ┌──────────────────────────┐                                           │
+│                                │ Agent 5:                 │                                           │
+│                                │ Targeted Cover Letter    │                                           │
+│                                └─────────────┬────────────┘                                           │
+└──────────────────────────────────────────────┼────────────────────────────────────────────────────────┘
+                                               │
+                                               ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ 5. COMPILATION, EXPORT & ALERT NOTIFICATIONS                                                        │
+│                                                                                                     │
+│   ┌───────────────────────────┐         ┌───────────────────────────┐       ┌───────────────────┐   │
+│   │ 📑 WeasyPrint & Jinja2    │────────►│ 📄 Tailored_CV.pdf        │──────► │ 📁 Upload to Drive│   │
+│   │ CSS Print Stylesheet      │         │ 📄 Cover_Letter.pdf       │       │ 📊 Mark Generated │    │
+│   └───────────────────────────┘         └─────────────┬─────────────┘       └───────────────────┘   │
+│                                                       │                                             │
+│                                                       ▼                                             │
+│                                         ┌───────────────────────────┐                               │
+│                                         │ 📱 Telegram Bot Delivery   │                               │
+│                                         │ - /generate <linkedin_id> │                               │
+│                                         │ - Instant PDF Dispatch    │                               │
+│                                         └───────────────────────────┘                               │
+└─────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+---
+
+## 📂 Project Structure
 
 ```text
-executive-cv-generator/
+├── client_secret_xxx.json      # Google OAuth 2.0 Client credentials
+├── token.json                  # Auto-generated authorized OAuth token cache
+├── requirements.txt            # Python dependencies
+├── main_cli.py                 # Interactive terminal runner for ad-hoc generation
+├── main_controller.py          # Google Sheets polling processor for "Generate CV"
+├── main_bot.py                 # Telegram Bot polling worker
+├── master_loop.py              # 24/7 background scheduler[cite: 4, 5]
 │
-├── .env                            # 🔒 Environment secrets (Bot tokens & local LLM endpoints)
-├── .gitignore                      # Prevents committing virtualenvs, logs, and generated PDFs
-├── requirements.txt                # Python dependencies
-├── README.md                       # System documentation & setup guide
+├── source/                     # Master Candidate Context Sources
+│   ├── titlesummary.mdux               # Baseline Title Line and Executive Summary
+│   ├── corecompetencies.mdux           # Master Core Functional Skills List
+│   ├── technicalcompetencies.mdux      # Master Tools, Languages, and Tech Stack
+│   ├── professionalexperiences.mdux    # Full Career History and Bullet Bank
+│   ├── coverletter.mdux                # Baseline Cover Letter Structure
+│   ├── staticcontent.mdux              # Education, Certifications, and Contact Info
+│   ├── style.css                       # PDF Styling Sheet for WeasyPrint
+│   └── AdnanShatilCV.docx              # Baseline Template Document
 │
-├── main_cli.py                     # 🚀 Entrypoint 1: Terminal Command Line Interface
-├── main_bot.py                     # 🚀 Entrypoint 2: Telegram Bot Listener & Handler
+├── src/                        # Core Engine Modules
+│   ├── __init__.py             # Module initialization
+│   ├── config.py               # Environment configuration and path loader
+│   ├── db.py                   # Local state tracking / caching
+│   ├── utils.py                # Text normalization and token utilities
+│   ├── agents.py               # Multi-agent prompt orchestrator for Ollama[cite: 1, 5]
+│   ├── pipeline.py             # Resume & Cover Letter synthesis pipelines
+│   ├── docx_utils.py           # Document transformations & PDF export tools
+│   ├── google_services.py      # Google Sheets & Google Drive API connectors
+│   ├── scraper_sync.py         # Apify LinkedIn sync & Drive ingestion worker
+│   ├── cleanup_discarded.py    # Auto-purger for rejected/discarded job artifacts[cite: 3, 5]
+│   └── scraper.py              # Raw HTML/URL scraper fallback utilities
 │
-├── source/                         # 📄 Candidate Master Source Data & Styles
-│   ├── titlesummary.md             # Master summary & title structures
-│   ├── corecompetencies.md         # Strategic core competency matrix
-│   ├── technicalcompetencies.md    # Raw technical skills inventory
-│   ├── professionalexperiences.md  # Detailed career achievement bullets & metrics
-│   ├── coverletter.md              # Cover letter base template
-│   ├── staticcontent.md            # Static employment history & education footer
-│   └── styles.css                  # Custom print CSS for 2-page executive PDF layout
-│
-├── linkedin/                       # 📁 Storage for raw scraped LinkedIn job descriptions
-├── output/                         # 📁 Destination for generated CVs (.md/.pdf) & Cover Letters (.pdf)
-├── log/                            # 📁 Logs directory for daemon stdout, stderr & history
-│   └── history.json                # 📊 JSON log mapping output files to original LinkedIn URLs
-│
-└── src/                            # 🧠 Core Application Package
-    ├── __init__.py                 # Package initializer
-    ├── config.py                   # Path definitions & environment variable loader
-    ├── utils.py                    # File I/O, timer utilities, PDF compiler & text sanitizers
-    ├── scraper.py                  # LinkedIn HTML parser & URL validation guardrails
-    ├── agents.py                   # Ollama prompt engineering & response parsing
-    └── pipeline.py                 # Main orchestrator connecting scraper, agents & output generator
-    ├── db.py                       # 💾 History log manager (writes to log/history.json)
+├── output/                     # Local artifact destination (PDF/DOCX/MD)
+├── log/                        # System runtime logs and execution histories
+└── tests/                      # Automated suite for Google APIs and Agents
 ```
 
-## 🛠️ Step-by-Step Environment Setup
-1. Prerequisites Check
-Install Ollama for macOS: Download and install from ollama.com.
+---
 
-Pull Required Model:
-```text
-Bash
-ollama pull gemma4:e4b
-```
-Verify Ollama Status:
-```text
-Bash
-curl http://localhost:11434/api/tags
-```
-2. Workspace & Virtual Environment Setup
-Run the following commands in your Mac terminal to set up the environment:
-```text
-Bash
-# 1. Create Python virtual environment
-python3 -m venv .venv
+## 🛠 Prerequisites & System Toolchain Setup
 
-# 2. Activate virtual environment
+### 1. Install Xcode Command Line Tools & Homebrew
+Open Terminal on your Mac Mini M4:
+
+Bash
+```text
+# Install Apple Developer Command Line Tools
+xcode-select --install
+
+# Install Homebrew package manager
+/bin/bash -c "$(curl -fsSL [https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh](https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh))"
+
+# Add Homebrew to your PATH
+echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
+eval "$(/opt/homebrew/bin/brew shellenv)"
+```
+
+### 2. Install System Dependencies & PDF Engines
+Bash
+```text
+brew update
+brew install python@3.11 git curl pango cairo libffi glib
+```
+
+### 3. Clone Repository & Setup Virtual Environment
+Bash
+```text
+git clone <your-repository-url> ats-engine
+cd ats-engine
+
+# Initialize Python 3.11 venv
+python3.11 -m venv .venv
 source .venv/bin/activate
 
-# 3. Upgrade pip and install dependencies
-pip install --upgrade pip
+# Upgrade packaging tools
+pip install --upgrade pip setuptools wheel
+
+# Install required Python packages
 pip install -r requirements.txt
 ```
 
-## 🤖 Telegram Bot Configuration
+## 🧠 Ollama & Model Initialization
+The generation engine uses local inference to keep all candidate data private and avoid external per-token costs.
 
-### 1. How to Set Up a Telegram Bot
-
-To run this pipeline interactively via Telegram, you must create a free bot and retrieve an API access token from Telegram’s official **BotFather**.
-
-#### Step 1: Create a Bot via `@BotFather`
-1. Open **Telegram** on your mobile device or desktop.
-2. Search for `@BotFather` (verify the official blue checkmark) and start a chat.
-3. Send the command:
+### 1. Install & Launch Ollama
+Bash
 ```text
-/newbot
-```
-4. Name Your Bot: Enter a display name when prompted (e.g., Executive CV Generator).
-5. Set Username: Choose a unique username ending in bot (e.g., my_executive_cv_bot).
-6. Save Your API Key: BotFather will reply with an API access token formatted like:
-```text
-7123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ
-```
-7. Now configure it in the next step 
+# Install Ollama via Homebrew
+brew install --cask ollama
 
-## ⚙️ Configuration Setup
-Environment File (.env)
-Create a .env file in the root project directory:
+# Start the Ollama local background daemon
+ollama serve &
+```
+
+### 2. Pull Target Model
+Pull the verified model weight:
+
+Bash
+```text
+ollama pull gemma4:12b
+```
+
+### 3. Verify Local Model Installation
+Run:
+
+Bash
+```text
+ollama list
+```
+
+Confirm that gemma4:12b appears in the list.
+
+### 4. Enable Metal Acceleration & Persistent Memory
+Add these environment variables to ~/.zshrc to optimize inference on Apple Silicon:
+
+Bash
+```text
+# Force model persistence in Unified RAM
+export OLLAMA_KEEP_ALIVE=-1
+
+# Enable Metal attention optimizations
+export OLLAMA_FLASH_ATTENTION=1
+
+# Allow multiple concurrent context evaluations
+export OLLAMA_NUM_PARALLEL=2
+```
+
+Apply the changes:
+
+Bash
+```text
+source ~/.zshrc
+```
+
+## ⚙️ Environment Variables & Configuration
+Create a .env file in the project root:
+
+Bash
+```text
+touch .env
+```
+
+Populate .env with the following variables:
 
 Code snippet
 ```text
-# Telegram Bot Key from @BotFather
-TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
-
-# Ollama Endpoint Parameters
-OLLAMA_MODEL=gemma4:e4b
+# ==============================================================================
+# LLM ENGINE CONFIGURATION
+# ==============================================================================
+OLLAMA_MODEL=gemma4:12b
 OLLAMA_URL=http://localhost:11434/api/chat
+
+# ==============================================================================
+# GOOGLE CLOUD INTEGRATION
+# ==============================================================================
+# Google Sheet ID from URL: [https://docs.google.com/spreadsheets/d/](https://docs.google.com/spreadsheets/d/)<ID>/edit
+GOOGLE_SHEET_ID=1a2B3c4D5e6F7g8H9i0JkLmNoPqRsTuVwXyZ
+
+# Root Google Drive Folder ID for "ATS_Resumes"
+GOOGLE_DRIVE_FOLDER_ID=1ZyxWvUtSrQpOnMlKjIhGfEdCbA
+
+# Google OAuth file paths (resolved automatically by src/config.py)
+GOOGLE_CLIENT_SECRET_PATH=client_secret_xxx.apps.googleusercontent.com.json
+GOOGLE_TOKEN_PATH=token.json
+
+# ==============================================================================
+# APIFY LINKEDIN SCRAPER CONFIGURATION
+# ==============================================================================
+APIFY_TOKEN=apify_api_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# ==============================================================================
+# TELEGRAM BOT INTEGRATION
+# ==============================================================================
+TELEGRAM_BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
+TELEGRAM_CHAT_ID=987654321
 ```
 
-Source Files Setup
-Ensure all required Markdown files and stylesheet are present inside the source/ folder:
-```text
-source/titlesummary.md
-source/corecompetencies.md
-source/technicalcompetencies.md
-source/professionalexperiences.md
-source/coverletter.md
-source/staticcontent.md
-source/styles.css
-```
+## ☁️ Google Cloud Platform & OAuth Setup
+The engine reads job statuses from Google Sheets and organizes job folders, parsed descriptions, and generated PDFs inside Google Drive.
 
-## 🖥️ How to Run & Test
-### Mode 1: Run via Terminal CLI (Fast Local Testing)
-Execute the pipeline directly from your terminal using a test LinkedIn URL:
-```text
+### Step 1: Enable APIs in Google Cloud Console
+Navigate to the Google Cloud Console.
+- Create a new project named ATS-Resume-Engine.
+- Go to APIs & Services > Library.
+- Search for and Enable both:
+- - Google Sheets API
+- - Google Drive API
+### Step 2: Configure OAuth Consent Screen
+- Go to APIs & Services > OAuth consent screen.
+- Select External and click Create.
+- Set App Name to ATS Engine and enter your user support email.
+- Under Scopes, add:
+- - https://www.googleapis.com/auth/spreadsheets
+- - https://www.googleapis.com/auth/drive
+- Under Test Users, add your personal Google account email.
+### Step 3: Download Credentials
+- Go to APIs & Services > Credentials.
+- Click Create Credentials > OAuth Client ID.
+- Choose Desktop App as the Application Type.
+- Download the resulting JSON file and save it in your project root as: client_secret_xxx.apps.googleusercontent.com.json[cite: 5].
+### Step 4: First-Time Authentication
+Run the test script to trigger the one-time browser login flow:
+
 Bash
-source .venv/bin/activate
-python main_cli.py "[https://www.linkedin.com/jobs/view/4429205456/](https://www.linkedin.com/jobs/view/4429205456/)"
-```
-Outputs will be generated directly in the output/ directory.
-
-### Mode 2: Run Interactively via Telegram Bot
-Launch the Telegram bot listener interactively in your terminal session:
 ```text
+python -c "from src.google_services import get_sheet; s = get_sheet(); print('Connected to Sheet:', s.title)"
+```
+A browser window will open. Authorize your Google account. The generated session token is cached as token.json for all future automated runs[cite: 2, 5].
+
+## 🕵️‍♂️ Apify LinkedIn Scraper Configuration
+- Create a free account on Apify.
+- Navigate to Settings > Integrations > API Tokens.
+- Copy your API Token and assign it to APIFY_TOKEN in .env.
+- The system uses the cheap_scraper/linkedin-job-scraper Actor to extract job titles, company metadata, direct links, and full text descriptions.
+- Search parameters (SEARCH_QUERIES, LOCATIONS, MAX_JOBS) can be configured directly inside src/scraper_sync.py.
+
+## 📱 Telegram Bot Integration
+Control the pipeline, trigger manual generations, and receive completed PDFs via Telegram.
+1. Create Your Bot
+- Open Telegram and search for @BotFather.
+- Send /newbot, assign a name and username (e.g., MyATSCVBot).
+- Copy the HTTP API token provided by BotFather into TELEGRAM_BOT_TOKEN in .env.
+2. Retrieve Your Personal Chat ID
+- Search for @userinfobot on Telegram and send /start.
+- Copy the numeric Id returned and assign it to TELEGRAM_CHAT_ID in .env.
+3. Launch the Bot Worker
+
 Bash
-source .venv/bin/activate
+```text
 python main_bot.py
 ```
-Send a valid LinkedIn job URL to your Telegram bot.
 
-Test sending non-LinkedIn links (e.g. https://google.com) or text messages to confirm the input validation guardrail rejects them immediately.
+Supported Bot Commands
+- /start – Displays system health, active LLM model, and connected Google Sheet.
+- /pending – Lists all jobs in Google Sheets currently set to Generate CV.
+- /generate <linkedin_id> – Manually triggers the 5-step agent pipeline for a specific job ID and returns the compiled PDF directly to the chat.
+- /status – Displays daily sync stats, generated counts, and memory usage.
 
-## ⚙️ Setting Up as a 24/7 Background Daemon on macOS
-To run the Telegram Bot continuously as a background daemon that starts on boot and auto-restarts on crashes:
+## 🛡 Git Setup & Ignore Rules
+To prevent leaking OAuth credentials, tokens, or compiled artifacts, ensure .gitignore contains the following rules:
 
-### Step 1: Generate launchd Configuration
-Run this command in your project root directory. It automatically resolves your current directory path ($PWD):
+Code snippet
 ```text
+# Python Bytecode & Environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+
+# Environment Variables & API Secrets
+.env
+client_secret*.json
+token.json
+
+# Local System & OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# Runtime Logs & Locks
+log/*.log
+log/history.json
+*.lock
+
+# Output Artifacts & Cache
+output/*
+!output/.gitkeep
+linkedin/
+```
+
+## 💻 Command-Line Usage & Execution Modes
+1. Interactive Local Mode (main_cli.py)
+Run an interactive session in your terminal to test prompt generations against any job description:
+
 Bash
-cat <<EOF> ~/Library/LaunchAgents/com.user.cvbot.plist
+```text
+python main_cli.py
+```
+
+Prompts you for a company name, target role, and raw job description. Outputs Markdown and compiled PDFs directly to the output/ folder[cite: 5].
+
+2. Manual Scraper Sync (src/scraper_sync.py)
+Trigger a standalone scrape and sheet sync on demand:
+
+Bash
+```text
+python -m src.scraper_sync
+```
+
+3. Discarded Jobs Cleanup (src/cleanup_discarded.py)
+Scan the Google Sheet for rows marked Discarded or Discard, purge their Google Drive folders, and mark the rows Deleted:
+
+Bash
+```text
+python -m src.cleanup_discarded
+```
+
+4. Cloud Controller Polling (main_controller.py)
+Run a single pass of the controller to process any jobs marked Generate CV in Google Sheets:
+
+Bash
+```text
+python main_controller.py
+```
+
+## ⏰ 24/7 Automation via macOS launchd
+To run the entire engine continuously in the background on your Mac Mini M4 without keeping a terminal window open:
+
+1. Create a launchd Service Definition
+Create the file ~/Library/LaunchAgents/com.ats.masterloop.plist:
+
+XML
+```text
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "[http://www.apple.com/DTDs/PropertyList-1.0.dtd](http://www.apple.com/DTDs/PropertyList-1.0.dtd)">
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.user.cvbot</string>
-
+    <string>com.ats.masterloop</string>
     <key>ProgramArguments</key>
     <array>
-        <string>$PWD/.venv/bin/python</string>
-        <string>$PWD/main_bot.py</string>
+        <string>/usr/bin/caffeinate</string>
+        <string>-dimsu</string>
+        <string>/Users/YOUR_USERNAME/ats-engine/.venv/bin/python</string>
+        <string>/Users/YOUR_USERNAME/ats-engine/master_loop.py</string>
     </array>
-
     <key>WorkingDirectory</key>
-    <string>$PWD/</string>
-
+    <string>/Users/YOUR_USERNAME/ats-engine</string>
+    <key>StandardOutPath</key>
+    <string>/Users/YOUR_USERNAME/ats-engine/log/master_stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/YOUR_USERNAME/ats-engine/log/master_stderr.log</string>
     <key>RunAtLoad</key>
     <true/>
-
     <key>KeepAlive</key>
     <true/>
-
-    <key>StandardOutPath</key>
-    <string>$PWD/log/bot_stdout.log</string>
-
-    <key>StandardErrorPath</key>
-    <string>$PWD/log/bot_stderr.log</string>
 </dict>
 </plist>
-EOF
 ```
-### Step 2: Load & Management Commands
-Start Daemon:
-```text
+
+(Replace /Users/YOUR_USERNAME/ats-engine with your actual project path).
+
+2. Load & Activate the Daemon
+
 Bash
-launchctl load ~/Library/LaunchAgents/com.user.cvbot.plist
-```
-Check Running Status:
 ```text
+# Load and start daemon
+launchctl load ~/Library/LaunchAgents/com.ats.masterloop.plist
+
+# Check running status
+launchctl list | grep com.ats.masterloop
+```
+
+3. To Stop the Service
+
 Bash
-launchctl list | grep com.user.cvbot
-```
-Tail Live Output Logs:
 ```text
-Bash
-tail -f log/bot_stdout.log
-```
-Tail Live Error Logs:
-```text
-Bash
-tail -f log/bot_stderr.log
-```
-Restart Daemon:
-```text
-Bash
-launchctl unload ~/Library/LaunchAgents/com.user.cvbot.plist
-launchctl load ~/Library/LaunchAgents/com.user.cvbot.plist
-```
-Stop Daemon:
-```text
-Bash
-launchctl unload ~/Library/LaunchAgents/com.user.cvbot.plist
+launchctl unload ~/Library/LaunchAgents/com.ats.masterloop.plist
 ```
 
-## Testing through telegram
-### How to Test the Telegram Bot
-Activate your Python virtual environment and launch the listener script:
+## 🚀 Performance Tuning & Troubleshooting
+Optimization Settings for Apple Silicon (M4 / 16GB)
+Inside src/agents.py, token boundaries are balanced to maximize speed while maintaining output quality:
+
+Python
 ```text
-Bash
-source .venv/bin/activate
-python main_bot.py
-```
-Open Telegram and navigate to your bot's chat.
-
-Send /start to verify connectivity.
-
-Send a valid LinkedIn Job Posting URL (e.g., https://www.linkedin.com/jobs/view/4429205456/).
-
-Send an invalid link (e.g., https://google.com or plain text) to verify that the guardrail instantly blocks malformed requests.
-
-### Expected Output in Telegram & Local Filesystem
-Interactive Telegram Chat Flow
-On /start:
-```text
-Plaintext
-👋 Executive CV Generator Ready!
-```
-Send a valid LinkedIn Job URL to generate your tailored CV and Cover Letter.
-On Invalid Input (e.g., plain text or general URLs):
-```text
-Plaintext
-⚠️ Invalid Link Format!
-```
-Please send a valid LinkedIn Job URL.
-📍 Format: [https://www.linkedin.com/jobs/view/](https://www.linkedin.com/jobs/view/)<JOB_ID>/
-On Valid LinkedIn Job Link (Immediate Processing Status):
-```text
-Plaintext
-🚀 Valid LinkedIn URL detected!
-⏳ Running local Ollama pipeline...
-```
-On Completion (Edits status message automatically):
-```text
-Plaintext
-✅ Process Completed Successfully!
-
-🎯 Role: Enterprise Architect
-🏢 Company: Posti Group Oyj
-
-⏱️ Total Pipeline Time: 0.45 mins
-
-📁 Files saved locally in output/
-Local Output Folder (output/)
-```
-Upon completion, four documents are automatically compiled and stored in your project's local output/ directory:
-```text
-📄 output/cv_postigroupoyj_enterprisearchitect.md (Raw Markdown CV)
-📕 output/cv_postigroupoyj_enterprisearchitect.pdf (Print-styled 2-page Executive CV)
-📄 output/cover_postigroupoyj_enterprisearchitect.md (Raw Markdown Cover Letter)
-📕 output/cover_postigroupoyj_enterprisearchitect.pdf (Print-styled Cover Letter PDF)
-📊 log/history.json (Structured history log)
-```
-
-# 📊 Job History (history.json) Sample Output
-```JSON
-[
-  {
-    "id": 1,
-    "timestamp": "2026-08-01 15:32:25",
-    "company": "ABB",
-    "role": "Systems Operations Specialist",
-    "linkedin_url": "https://www.linkedin.com/jobs/view/4447505488/",
-    "files": {
-      "cv_md": "cv_abb_systems_operations_specialist.md",
-      "cv_pdf": "cv_abb_systems_operations_specialist.pdf",
-      "cover_md": "cover_letter_abb_systems_operations_specialist.md",
-      "cover_pdf": "cover_letter_abb_systems_operations_specialist.pdf"
+# Optimal inference options for 12B model on M4 Unified RAM
+payload = {
+    "model": OLLAMA_MODEL,
+    "messages": messages,
+    "options": {
+        "num_ctx": 4096,          # Optimal context window per agent pass
+        "num_predict": 600,        # Prevents unnecessary generation loops
+        "temperature": 0.20,       # Low temperature for strict factual alignment
+        "top_p": 0.95,
+        "thinking": False
     },
-    "execution_time_min": "6.22"
-  },
-  {
-    "id": 2,
-    "timestamp": "2026-08-01 15:37:03",
-    "company": "ABB",
-    "role": "Business Analyst Senior Manager",
-    "linkedin_url": "https://www.linkedin.com/jobs/view/4444343007/",
-    "files": {
-      "cv_md": "cv_abb_business_analyst_senior_manager.md",
-      "cv_pdf": "cv_abb_business_analyst_senior_manager.pdf",
-      "cover_md": "cover_letter_abb_business_analyst_senior_manager.md",
-      "cover_pdf": "cover_letter_abb_business_analyst_senior_manager.pdf"
-    },
-    "execution_time_min": "5.40"
-  }
-] 
+    "keep_alive": "1h",            # Avoids reloading model weights into VRAM
+    "stream": False
+}
 ```
+
+## Common Issues & Solutions
+
+| Issue | Root Cause | Solution |
+| :--- | :--- | :--- |
+| **`404 Not Found: /api/chat`** | Target model tag does not match local Ollama registry. | Run `ollama list` and verify `OLLAMA_MODEL` in `.env` matches the tag exactly. |
+| **`Read timed out. (read timeout=120)`** | Prompt processing exceeded the HTTP read deadline. | In `src/agents.py`, update the requests timeout to `timeout=(30, 600)`. |
+| **Only 1 row appears in Google Sheet** | Synchronous per-row API updates overwritten due to latency. | Use `append_scraped_jobs_batch()` in `src/google_services.py` to write rows in a single batch. |
+| **Mac Mini sleep interrupts execution** | macOS deep sleep suspended background network sockets. | Run using `caffeinate -dimsu` or disable system sleep in **System Settings > Displays > Advanced**. |
+| **Google Sheet appends to Row 1001** | Default Google Sheet was created with 1,000 empty rows. | Select and delete empty rows 2–1000 in your browser, then run the sync again. |
+
+
+## 📄 License
+This project is proprietary and intended for personal career automation.

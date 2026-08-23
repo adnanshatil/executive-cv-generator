@@ -54,14 +54,6 @@ def extract_metadata(requirements: str, header_source: str) -> dict:
         "summary": re.search(r"SUMMARY:\s*(.*)", output, re.IGNORECASE | re.DOTALL).group(1).strip() if "SUMMARY:" in output else output
     }
 
-def generate_core_competencies(requirements: str, anchor: str, core_source: str) -> str:
-    prompt = f"""
-    Requirements:\n{requirements}\n\nAnchor:\n{anchor}\n\nSource:\n{core_source}
-    Instructions:\nSelect 12 capabilities across 3 unique sub-headers with 4 short phrases under each.
-    Do NOT use long em-dashes (—).
-    """
-    return call_native_ollama(prompt, "Principal Enterprise Architect.")
-
 def generate_tech_stack(requirements: str, anchor: str, tech_source: str) -> str:
     prompt = f"""Target Job Requirements:
     {requirements}

@@ -26,12 +26,10 @@ def run_pipeline(input_param: str = None, pre_company: str = None, pre_role: str
         metrics["dur_ingest"] = t_ingest.duration
 
         # Load Source Data
-        header_src = load_source_file("titlesummary.md")
-        core_src = load_source_file("corecompetencies.md")
+        header_src = load_source_file("titlesummary.md")        
         tech_src = load_source_file("technicalcompetencies.md")
         exp_src = load_source_file("professionalexperiences.md")
-        cover_src = load_source_file("coverletter.md")
-        static_footer = load_source_file("staticcontent.md")
+        cover_src = load_source_file("coverletter.md")        
 
         exp_lines = [line.strip() for line in exp_src.split("\n") if line.strip().startswith("-")]
         formatted_exp = "\n".join(exp_lines)
@@ -54,10 +52,8 @@ def run_pipeline(input_param: str = None, pre_company: str = None, pre_role: str
             anchor = f"TARGET COMPANY: {company}\nTARGET ROLE: {role}\nTITLE LINE: {meta['title_line']}\nSUMMARY: {meta['summary'][:350]}..."
         metrics["dur_1"] = t_1.duration
 
-        # Step 2: Core Competencies
-        with Timer() as t_2:
-            out_2 = agents.generate_core_competencies(requirements, anchor, core_src)
-        metrics["dur_2"] = t_2.duration
+        # Step 2: Core Competencies (skipped for now, as it was removed from agents.py)
+        metrics["dur_2"] = 0.0
 
         # Step 3: Tech Stack
         with Timer() as t_3:
@@ -80,58 +76,22 @@ def run_pipeline(input_param: str = None, pre_company: str = None, pre_role: str
         clean_comp_fn = re.sub(r'_+', '_', clean_comp_fn)
         clean_role_fn = re.sub(r'_+', '_', clean_role_fn)
 
-        cv_md_path = OUTPUT_DIR / f"cv_{clean_comp_fn}_{clean_role_fn}.md"
-        cv_pdf_path = OUTPUT_DIR / f"cv_{clean_comp_fn}_{clean_role_fn}.pdf"
         cover_md_path = OUTPUT_DIR / f"cover_letter_{clean_comp_fn}_{clean_role_fn}.md"
         cover_pdf_path = OUTPUT_DIR / f"cover_letter_{clean_comp_fn}_{clean_role_fn}.pdf"
-
-        # Convert Ollama output into a clean 4x3 row grid
-        comp_dict = parse_competencies_to_dict(out_2)
 
         # .docx output generation
         context = {
             "title_line": meta["title_line"],
             "summary": meta["summary"],            
             "technical_competencies": out_3,
-            "professional_experience": out_4,
-            **comp_dict
+            "professional_experience": out_4            
         }
 
         with Timer() as t_cv_compile:
             output_docx_path = OUTPUT_DIR / f"cv_{clean_comp_fn}_{clean_role_fn}.docx"
             docx_path, pdf_path = render_docx_template(output_docx_path, context)
 
-#        # Save CV (Markdown Only)
-#        with Timer() as t_cv_compile:
-#             final_cv = textwrap.dedent(f"""\
-# # Adnan Md. Shoeb Shatil
-# **{meta['title_line']}**
-
-# **Email:** shoeb.shatil@gmail.com | **Phone:** +358(0)406850868\n
-# **LinkedIn:** linkedin.com/in/adnanshatil | **Github:** github.com/adnanshatil
-
-
-
-# ### EXECUTIVE SUMMARY
-# {meta['summary']}
-
-# ### CORE COMPETENCIES
-# {out_2}
-
-# ### TECHNICAL COMPETENCIES
-# {out_3}
-
-# ### PROFESSIONAL EXPERIENCE
-# #### - Enterprise Architect
-# **Posti Group Oyj**         *11/2024 – Present | Helsinki, Finland*
-# {out_4}
-
-# {static_footer}
-# """).strip()
-
-#             save_text(cv_md_path, final_cv)
-#             save_pdf(cv_pdf_path, final_cv)
-        metrics["cv_total_time"] = t_1.duration + t_2.duration + t_3.duration + t_4.duration + t_cv_compile.duration
+        metrics["cv_total_time"] = t_1.duration + t_3.duration + t_4.duration + t_cv_compile.duration
 
         # Save Cover Letter (PDF Only)
         with Timer() as t_cover_compile:
@@ -152,8 +112,6 @@ def run_pipeline(input_param: str = None, pre_company: str = None, pre_role: str
             linkedin_url=input_param.strip(),
             cv_md=docx_path.name,        
             cv_pdf=pdf_path.name,
-            # cv_md=cv_md_path.name,
-            # cv_pdf=cv_pdf_path.name,
             cover_md=cover_md_path.name,
             cover_pdf=cover_pdf_path.name,
             exec_time=f"{total_minutes:.2f}"
