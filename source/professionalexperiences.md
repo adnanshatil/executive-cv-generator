@@ -20,3 +20,4 @@
 - End to end eCom (SAP Commerce Cloud, Commercetools, Woo Commerce etc.) solution planning and implementation along with ERP/OMS (SAP, NetSuite or custom), Product MDM (Semarchy, SAP MDG), PSP (Klarna, Stripe, Swish, Paytrail) or CMS (Adobe, Contentful) integrations. 
 - Hands-on experience building AI agents (LLM powered) with LangChain / LangGraph, CrewAI. Managin MLOps through AWS Sagemaker. Brief idea about Agents SDK (i.e. Harness, Strands etc.)
 - Data lifecycle management through Databricks (raw-bronze-silver-gold), along with conceptual, logical and physical data modeling. Data pipeline orchestration, creating organization centric ML Models, dashboard and internal application. Golden layer for PowerBI reporting. 
+- An MCP-driven Agentic AI platform integrating Order Management and Postal Operations to automate subscription fulfillment, dynamic dispatch scheduling, and real-time carrier resource allocation.
