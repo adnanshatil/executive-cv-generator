@@ -39,3 +39,7 @@ GOOGLE_DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "")
 
 # GoogleSheet ID for storing generated files
 GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID", "")
+
+# Screening & Confidence Configuration
+SCREENING_COOLDOWN_SECONDS = int(os.getenv("SCREENING_COOLDOWN_SECONDS", "300"))
+MIN_CONFIDENCE_THRESHOLD = int(os.getenv("MIN_CONFIDENCE_THRESHOLD", "60"))

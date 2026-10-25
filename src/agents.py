@@ -176,3 +176,50 @@ Adnan Shatil"""
         num_predict=700,
         num_ctx=4096
     )
+
+def evaluate_role_confidence(requirements: str, company: str, role: str) -> dict:
+    """
+    Evaluates how closely a scraped job matches Adnan Shatil's executive Enterprise Architect profile.
+    Returns a dict with 'confidence' (int 0-100) and 'reason' (str).
+    """
+    clean_req = requirements[:3500].strip() if requirements else ""
+
+    prompt = f"""Target Company: {company}
+Target Role: {role}
+Job Requirements:
+{clean_req}
+
+Candidate Master Profile Summary:
+- Title & Seniority: Enterprise Architect, Strategic Technology Executive, Senior Architecture Leader with 17+ years of experience.
+- Core Domains: Enterprise Architecture (TOGAF, ArchiMate), IT Strategy & Governance, Architecture Review Boards, Portfolio Consolidation & TCO/ROI.
+- Technical & Platform Expertise: ERP Modernization (SAP S/4HANA, SAP BRIM), High-Throughput B2B Integration Fabrics (APIs, Event-Driven Architecture, Kafka, Solace, RabbitMQ), Hybrid Cloud Architecture (AWS, Azure, GCP), Master Data Governance (Semarchy xDM, SQL, Anaplan).
+- Target Career Levels: Enterprise Architect, Principal Architect, Chief Architect, Head of Architecture, Lead Solution Architect, IT Director/Head of Technology.
+- Unfit Roles (Score < 50%): Junior/Mid roles, pure hands-on single-stack coding without architecture, Frontend/UI, Game Engine dev, Embedded/Hardware, Sales/Marketing, Non-technical HR.
+
+INSTRUCTIONS:
+1. Evaluate the relevance and fit of this job for the candidate on a scale of 0 to 100%.
+2. Output ONLY the confidence score and a one-sentence rationale in the exact format below.
+
+OUTPUT FORMAT:
+CONFIDENCE: [0-100]
+REASON: [One-sentence rationale]"""
+
+    output = call_native_ollama(
+        prompt=prompt,
+        system_prompt="You are a senior executive recruitment screener. Output strictly the confidence score and reason without commentary.",
+        num_predict=150,
+        num_ctx=4096,
+        temperature=0.10
+    )
+
+    conf_match = re.search(r"CONFIDENCE:\s*(\d+)", output, re.IGNORECASE)
+    confidence = int(conf_match.group(1)) if conf_match else 50
+    confidence = max(0, min(100, confidence))
+
+    reason_match = re.search(r"REASON:\s*(.*)", output, re.IGNORECASE)
+    reason = reason_match.group(1).strip() if reason_match else output.strip()
+
+    return {
+        "confidence": confidence,
+        "reason": reason
+    }

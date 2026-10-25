@@ -5,7 +5,8 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
+from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
+import io
 
 # 1. Import the new paths from config
 from .config import (
@@ -103,6 +104,18 @@ def upload_file_to_drive(file_path: Path, folder_id: str) -> str:
     
     return uploaded_file.get("webViewLink")
 
+def download_text_from_drive(file_link_or_id: str) -> str:
+    """Downloads raw text content from a Google Drive file link or file ID."""
+    service = get_drive_service()
+    file_id = extract_id(file_link_or_id)
+    request = service.files().get_media(fileId=file_id)
+    fh = io.BytesIO()
+    downloader = MediaIoBaseDownload(fh, request)
+    done = False
+    while not done:
+        status, done = downloader.next_chunk()
+    return fh.getvalue().decode("utf-8")
+
 # ---------------------------------------------------------------------------
 # Sheet Operations
 # ---------------------------------------------------------------------------
@@ -122,22 +135,24 @@ def append_scraped_job(
     linkedin_link: str,
     scraped_info_link: str,
     folder_link: str,
-    scraped_date: str
+    scraped_date: str,
+    confidence: str = ""
 ):
-    """Appends a new scraped job row to the Google Sheet."""
+    """Appends a new scraped job row to the Google Sheet (12-column layout)."""
     sheet = get_sheet()
     row = [
-        status,              # A
-        deadline,            # B
-        company,             # C
-        role,                # D
-        str(linkedin_id),    # E
-        linkedin_link,       # F
-        scraped_info_link,   # G
-        "",                  # H (CV PDF Link - blank for now)
-        "",                  # I (Cover Letter Link - blank for now)
-        folder_link,         # J
-        scraped_date         # K
+        status,              # A (Col 1)
+        deadline,            # B (Col 2)
+        company,             # C (Col 3)
+        role,                # D (Col 4)
+        confidence,          # E (Col 5) - Confidence score
+        str(linkedin_id),    # F (Col 6)
+        linkedin_link,       # G (Col 7)
+        scraped_info_link,   # H (Col 8)
+        "",                  # I (Col 9) - CV PDF Link
+        "",                  # J (Col 10) - Cover Letter Link
+        folder_link,         # K (Col 11)
+        scraped_date         # L (Col 12)
     ]
     sheet.append_row(row)
 
@@ -154,6 +169,25 @@ def get_jobs_pending_generation() -> list[dict]:
             
     return pending
 
+def get_jobs_pending_screening() -> list[dict]:
+    """Returns rows where Status == 'Scraped'."""
+    sheet = get_sheet()
+    records = sheet.get_all_records()
+    
+    pending = []
+    for idx, row in enumerate(records, start=2):  # Row 1 is header
+        if row.get("Status") == "Scraped":
+            row["_row_number"] = idx
+            pending.append(row)
+            
+    return pending
+
+def update_job_confidence_and_status(row_number: int, confidence: str, status: str):
+    """Updates Confidence (Col 5 / E) and Status (Col 1 / A)."""
+    sheet = get_sheet()
+    sheet.update_cell(row_number, 5, confidence)
+    sheet.update_cell(row_number, 1, status)
+
 def update_job_generation_success(
     row_number: int,
     cv_pdf_link: str,
@@ -162,8 +196,8 @@ def update_job_generation_success(
     """Updates row status to 'Generated' and attaches output PDF links."""
     sheet = get_sheet()
     sheet.update_cell(row_number, 1, "Generated")        # Column A (Status)
-    sheet.update_cell(row_number, 8, cv_pdf_link)       # Column H (CV PDF Link)
-    sheet.update_cell(row_number, 9, cover_pdf_link)    # Column I (Cover Letter Link)
+    sheet.update_cell(row_number, 9, cv_pdf_link)       # Column I (CV PDF Link)
+    sheet.update_cell(row_number, 10, cover_pdf_link)   # Column J (Cover Letter Link)
 
 def update_job_status(row_number: int, status: str):
     """Updates the status cell of a specific row."""
@@ -212,11 +246,11 @@ def extract_id(url_or_id: str) -> str:
 
 def purge_discarded_job_row(row_number: int):
     """
-    Updates status to 'Deleted' and clears Scraped Info (G), CV Link (H),
-    Cover Letter Link (I), and Folder Link (J).
+    Updates status to 'Deleted' and clears Scraped Info (H), CV Link (I),
+    Cover Letter Link (J), and Folder Link (K).
     """
     sheet = get_sheet()
     sheet.update_cell(row_number, 1, "Deleted")  # Column A (Status)
     
-    # Batch clear columns G to J (Columns 7, 8, 9, 10)
-    sheet.update(f"G{row_number}:J{row_number}", [["", "", "", ""]])
+    # Batch clear columns H to K (Columns 8, 9, 10, 11)
+    sheet.update(f"H{row_number}:K{row_number}", [["", "", "", ""]])

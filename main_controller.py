@@ -143,8 +143,8 @@ def run_controller():
             final_cv_link = uploaded_links.get("cv_pdf", uploaded_links.get("cv_docx", ""))
             final_cover_link = uploaded_links.get("cover_pdf", uploaded_links.get("cover_md", ""))
             
-            sheet.update_cell(row_num, 8, final_cv_link)      # Col H: CV 
-            sheet.update_cell(row_num, 9, final_cover_link)   # Col I: Cover Letter
+            sheet.update_cell(row_num, 9, final_cv_link)      # Col I: CV 
+            sheet.update_cell(row_num, 10, final_cover_link)  # Col J: Cover Letter
             
             update_job_status(row_num, "Generated")
             
