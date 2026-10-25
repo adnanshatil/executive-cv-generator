@@ -19,10 +19,7 @@ LINKEDIN_DIR.mkdir(parents=True, exist_ok=True)
 # Environment Variables
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma4:12b")
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/chat")
-
-# In src/config.py
-CSS_FILE = SOURCE_DIR / "styles.css"
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://192.168.2.2:11434/api/chat")
 
 # soffice path for LibreOffice CLI (if needed)
 SOFFICE_PATH = os.getenv("SOFFICE_PATH", "")

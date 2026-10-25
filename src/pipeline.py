@@ -109,7 +109,7 @@ def run_pipeline(input_param: str = None, pre_company: str = None, pre_role: str
         log_generation(
             company=company,
             role=role,
-            linkedin_url=input_param.strip(),
+            linkedin_url=input_param.strip() if input_param else "",
             cv_md=docx_path.name,        
             cv_pdf=pdf_path.name,
             cover_md=cover_md_path.name,
