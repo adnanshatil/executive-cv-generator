@@ -63,6 +63,23 @@ def convert_docx_to_pdf_libreoffice(docx_path: Path) -> Path:
         
     return pdf_path
 
+def strip_internal_watermarks(docx_path: Path):
+    """Programmatically ensures no 'INTERNAL' text remains in headers or footers."""
+    from docx import Document
+    doc = Document(docx_path)
+    modified = False
+    for section in doc.sections:
+        for container in [section.header, section.first_page_header, section.even_page_header,
+                          section.footer, section.first_page_footer, section.even_page_footer]:
+            if not container:
+                continue
+            for p in container.paragraphs:
+                if "internal" in p.text.lower():
+                    p.text = ""
+                    modified = True
+    if modified:
+        doc.save(docx_path)
+
 def render_docx_template(output_docx_path: Path, context: dict) -> tuple[Path, Path]:
     """Renders the docx template and converts it to PDF."""
     if not TEMPLATE_FILE.exists():
@@ -73,7 +90,10 @@ def render_docx_template(output_docx_path: Path, context: dict) -> tuple[Path, P
     doc.render(context)
     doc.save(output_docx_path)
 
-    # 2. Convert to PDF
+    # 2. Strip any 'INTERNAL' watermarks
+    strip_internal_watermarks(output_docx_path)
+
+    # 3. Convert to PDF
     output_pdf_path = convert_docx_to_pdf_libreoffice(output_docx_path)
 
     return output_docx_path, output_pdf_path

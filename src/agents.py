@@ -1,7 +1,7 @@
 import re
 import requests
 from .config import OLLAMA_URL, OLLAMA_MODEL
-from .utils import clean_dashes
+from .utils import clean_dashes, load_source_file
 
 def call_native_ollama(
     prompt: str,
@@ -177,37 +177,60 @@ Adnan Shatil"""
         num_ctx=4096
     )
 
-def evaluate_role_confidence(requirements: str, company: str, role: str) -> dict:
+def evaluate_role_confidence(
+    requirements: str,
+    company: str,
+    role: str,
+    tech_source: str = None,
+    exp_source: str = None
+) -> dict:
     """
-    Evaluates how closely a scraped job matches Adnan Shatil's executive Enterprise Architect profile.
+    Evaluates how closely a scraped job matches Adnan Shatil's actual master profile,
+    specifically comparing requirements against technicalcompetencies.md and professionalexperiences.md.
     Returns a dict with 'confidence' (int 0-100) and 'reason' (str).
     """
     clean_req = requirements[:3500].strip() if requirements else ""
 
+    if not tech_source:
+        tech_source = load_source_file("technicalcompetencies.md")
+    if not exp_source:
+        exp_source = load_source_file("professionalexperiences.md")
+
     prompt = f"""Target Company: {company}
 Target Role: {role}
-Job Requirements:
+
+Target Job Requirements:
 {clean_req}
 
-Candidate Master Profile Summary:
-- Title & Seniority: Enterprise Architect, Strategic Technology Executive, Senior Architecture Leader with 17+ years of experience.
-- Core Domains: Enterprise Architecture (TOGAF, ArchiMate), IT Strategy & Governance, Architecture Review Boards, Portfolio Consolidation & TCO/ROI.
-- Technical & Platform Expertise: ERP Modernization (SAP S/4HANA, SAP BRIM), High-Throughput B2B Integration Fabrics (APIs, Event-Driven Architecture, Kafka, Solace, RabbitMQ), Hybrid Cloud Architecture (AWS, Azure, GCP), Master Data Governance (Semarchy xDM, SQL, Anaplan).
-- Target Career Levels: Enterprise Architect, Principal Architect, Chief Architect, Head of Architecture, Lead Solution Architect, IT Director/Head of Technology.
-- Unfit Roles (Score < 50%): Junior/Mid roles, pure hands-on single-stack coding without architecture, Frontend/UI, Game Engine dev, Embedded/Hardware, Sales/Marketing, Non-technical HR.
+Candidate Master Technical Competencies Source:
+{tech_source}
+
+Candidate Master Professional Experience Source:
+{exp_source}
 
 INSTRUCTIONS:
-1. Evaluate the relevance and fit of this job for the candidate on a scale of 0 to 100%.
-2. Output ONLY the confidence score and a one-sentence rationale in the exact format below.
+You are an executive technology recruiter evaluating this candidate for the target job.
+1. Compare the target job requirements directly against the candidate's verified master technical competencies and career experience.
+2. Evaluate:
+   - Seniority & Architecture Level: Enterprise Architect, Principal, Lead Solution Architect, IT Director/Head of Technology vs junior developer roles.
+   - Domain & Stack Fit: Cloud (AWS/Azure), ERP (SAP S/4HANA), Integration fabrics (Kafka, RabbitMQ, Solace, APIs, EDA), Data Platforms (Databricks, Snowflake), EA Governance (TOGAF, LeanIX), and Agentic AI.
+   - Disqualifiers (Score < 50%): Unrelated fields (pure Frontend UI, Game development, Embedded/Hardware, Sales/Marketing, Non-technical HR, or pure junior hands-on coding without architecture).
+3. Language Requirement Check:
+   - Check if this job posting strictly requires mandatory Finnish language skills (e.g. ad is written in Finnish, or states fluent/native Finnish is required/mandatory/edellytys/kielitaitovaatimus).
+   - If English is accepted or Finnish is merely optional/preferred, answer NO.
+   - If Finnish is strictly required or mandatory, answer YES.
+4. Assign a match confidence score from 0 to 100%.
+5. Output strictly in the exact format below without any conversational preamble or notes.
 
 OUTPUT FORMAT:
 CONFIDENCE: [0-100]
-REASON: [One-sentence rationale]"""
+MANDATORY_FINNISH: [YES/NO]
+REASON: [1-2 sentence concise explanation highlighting specific technical/experience match points or critical gaps]"""
 
     output = call_native_ollama(
         prompt=prompt,
-        system_prompt="You are a senior executive recruitment screener. Output strictly the confidence score and reason without commentary.",
-        num_predict=150,
+        system_prompt="You are an executive technology recruiter. Output strictly the confidence score, language check, and reason without commentary.",
+        num_predict=220,
         num_ctx=4096,
         temperature=0.10
     )
@@ -216,10 +239,23 @@ REASON: [One-sentence rationale]"""
     confidence = int(conf_match.group(1)) if conf_match else 50
     confidence = max(0, min(100, confidence))
 
+    finnish_match = re.search(r"MANDATORY_FINNISH:\s*(YES|NO)", output, re.IGNORECASE)
+    is_finnish_llm = bool(finnish_match and finnish_match.group(1).upper() == "YES")
+
+    # Secondary heuristic check on raw requirements text
+    is_finnish_heuristic = bool(re.search(
+        r'\b(?:suomen\s+kiel|sujuva[a-z]*\s+suomi|kielitaitovaatimuksena\s+suomi|edellytämme\s+suomen|vaadimme\s+suomen|fluent\s+(?:in\s+)?finnish|mandatory\s+finnish|finnish\s+(?:is\s+)?(?:mandatory|required))\b',
+        clean_req,
+        re.IGNORECASE
+    ))
+
+    mandatory_finnish = is_finnish_llm or is_finnish_heuristic
+
     reason_match = re.search(r"REASON:\s*(.*)", output, re.IGNORECASE)
     reason = reason_match.group(1).strip() if reason_match else output.strip()
 
     return {
         "confidence": confidence,
+        "mandatory_finnish": mandatory_finnish,
         "reason": reason
     }

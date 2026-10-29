@@ -170,13 +170,13 @@ def get_jobs_pending_generation() -> list[dict]:
     return pending
 
 def get_jobs_pending_screening() -> list[dict]:
-    """Returns rows where Status == 'Scraped'."""
+    """Returns rows where Status == 'Scraped' and Confidence has not yet been calculated."""
     sheet = get_sheet()
     records = sheet.get_all_records()
     
     pending = []
     for idx, row in enumerate(records, start=2):  # Row 1 is header
-        if row.get("Status") == "Scraped":
+        if row.get("Status") == "Scraped" and not str(row.get("Confidence", "")).strip():
             row["_row_number"] = idx
             pending.append(row)
             
