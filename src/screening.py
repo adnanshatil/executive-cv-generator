@@ -1,5 +1,9 @@
 import time
-from .config import SCREENING_COOLDOWN_SECONDS, MIN_CONFIDENCE_THRESHOLD
+from .config import (
+    SCREENING_COOLDOWN_SECONDS,
+    MIN_CONFIDENCE_THRESHOLD,
+    CHECK_MANDATORY_FINNISH
+)
 from .utils import load_source_file
 from .google_services import (
     get_sheet,
@@ -95,7 +99,8 @@ def run_screening():
                 company=company,
                 role=role,
                 tech_source=tech_src,
-                exp_source=exp_src
+                exp_source=exp_src,
+                check_language=CHECK_MANDATORY_FINNISH
             )
             confidence = eval_result["confidence"]
             mandatory_finnish = eval_result.get("mandatory_finnish", False)
@@ -106,9 +111,9 @@ def run_screening():
             mandatory_finnish = False
             reason = f"Evaluation error: {e}"
 
-        # 3. Apply Decision Threshold & Finnish Language Rule
+        # 3. Apply Decision Threshold & Finnish Language Feature Flag
         confidence_str = f"{confidence}%"
-        if mandatory_finnish:
+        if CHECK_MANDATORY_FINNISH and mandatory_finnish:
             new_status = "Scraped"
             finnish_flag_count += 1
             icon = "🇫🇮"
