@@ -17,16 +17,19 @@ def run_screening():
     """
     Screens newly scraped jobs (Status == 'Scraped' with empty Confidence):
     
-    1. Duplicate Filter: If multiple roles are found with identical Company and Role names,
-       marks subsequent ones 'Discarded' immediately without calculating confidence.
-    2. Confidence Evaluation: Compares requirements against candidate master technical
-       competencies and professional experiences.
-    3. Mandatory Finnish Check: If mandatory Finnish language is required, calculates
-       confidence and keeps status as 'Scraped' (does not promote to 'Generate CV').
-    4. Threshold Promotion:
-       - Confidence >= MIN_CONFIDENCE_THRESHOLD (and no mandatory Finnish): 'Generate CV'
+    1. In-Batch Duplicate Filter:
+       - Only checks within the current batch of newly scraped jobs (not historical rows).
+       - If multiple jobs share identical (Company, Role), keeps the first one for evaluation
+         and immediately marks subsequent duplicates as 'Discarded' (skipping LLM call).
+    2. Confidence Evaluation:
+       - Compares requirements against candidate master technical competencies and experiences.
+    3. Mandatory Finnish Language Check:
+       - If mandatory Finnish is required, calculates actual confidence and keeps status as 'Scraped'
+         (does not promote to 'Generate CV', leaving it for manual review).
+    4. Threshold Promotion (if no mandatory Finnish):
+       - Confidence >= MIN_CONFIDENCE_THRESHOLD: 'Generate CV'
        - Confidence < MIN_CONFIDENCE_THRESHOLD: 'Discarded'
-    5. Pauses SCREENING_COOLDOWN_SECONDS between LLM evaluations to protect CPU thermals.
+    5. Cooldown: Pauses SCREENING_COOLDOWN_SECONDS between LLM evaluations to protect CPU thermals.
     """
     print("🔍 Starting Role Relevance & Confidence Screening...")
     pending_jobs = get_jobs_pending_screening()
@@ -39,19 +42,8 @@ def run_screening():
     print(f"📊 Found {total} scraped job(s) pending confidence evaluation.")
     print(f"   Threshold: {MIN_CONFIDENCE_THRESHOLD}% | Cooldown: {SCREENING_COOLDOWN_SECONDS // 60}m per job\n")
 
-    # Fetch all records to build a set of already existing (Company, Role) pairs
-    sheet = get_sheet()
-    all_records = sheet.get_all_records()
-    seen_company_roles = set()
-    for record in all_records:
-        st = str(record.get("Status", "")).strip()
-        conf = str(record.get("Confidence", "")).strip()
-        # Include all rows that are already processed or screened
-        if st != "Scraped" or conf:
-            c = str(record.get("Company", "")).strip().lower()
-            r = str(record.get("Role", "")).strip().lower()
-            if c and r:
-                seen_company_roles.add((c, r))
+    # In-batch duplicate tracking: only tracks (Company, Role) within this newly scraped batch
+    seen_in_batch_company_roles = set()
 
     # Load master sources once for all evaluations
     tech_src = load_source_file("technicalcompetencies.md")
@@ -68,16 +60,16 @@ def run_screening():
         linkedin_id = str(job.get("LinkedIn ID", "Unknown")).strip()
         info_link = str(job.get("Scraped Info Link", "")).strip()
 
-        # Step 0: Check for duplicate Company and Role names
+        # Step 0: Check for duplicates within this batch ONLY
         norm_key = (company.lower(), role.lower())
-        if norm_key in seen_company_roles:
-            print(f"[{idx + 1}/{total}] 🗑️ Duplicate Company & Role detected: '{company}' - '{role}' ({linkedin_id}) already exists. Marked Discarded (Skipping LLM).")
+        if norm_key in seen_in_batch_company_roles:
+            print(f"[{idx + 1}/{total}] 🗑️ In-batch duplicate detected: '{company}' - '{role}' ({linkedin_id}) already seen in this scraped batch. Marked Discarded (Skipping LLM).")
             update_job_confidence_and_status(row_num, "", "Discarded")
             discarded_count += 1
             continue
 
-        # Register this company & role combination so subsequent duplicates in this batch are discarded
-        seen_company_roles.add(norm_key)
+        # Register this company & role combination for subsequent items in this batch
+        seen_in_batch_company_roles.add(norm_key)
 
         print(f"[{idx + 1}/{total}] Evaluating: {company} - {role} ({linkedin_id})")
 
