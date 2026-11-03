@@ -170,14 +170,27 @@ def get_jobs_pending_generation() -> list[dict]:
     return pending
 
 def get_jobs_pending_screening() -> list[dict]:
-    """Returns rows where Status == 'Scraped' and Confidence has not yet been calculated."""
+    """
+    Returns rows where:
+    1. Status == 'Cal. Confidence' (manual user trigger to calculate confidence)
+    2. Status == 'Scraped' and Confidence is empty (automatic screening for newly scraped jobs)
+    """
     sheet = get_sheet()
     records = sheet.get_all_records()
     
     pending = []
     for idx, row in enumerate(records, start=2):  # Row 1 is header
-        if row.get("Status") == "Scraped" and not str(row.get("Confidence", "")).strip():
+        status = str(row.get("Status", "")).strip()
+        confidence = str(row.get("Confidence", "")).strip()
+        
+        # 'Cal. Confidence' is an explicit request to calculate confidence
+        if status.lower() in ("cal. confidence", "cal confidence", "calculate confidence"):
             row["_row_number"] = idx
+            row["_manual_trigger"] = True
+            pending.append(row)
+        elif status == "Scraped" and not confidence:
+            row["_row_number"] = idx
+            row["_manual_trigger"] = False
             pending.append(row)
             
     return pending

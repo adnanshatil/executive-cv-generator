@@ -177,6 +177,17 @@ Adnan Shatil"""
         num_ctx=4096
     )
 
+def is_mandatory_finnish_required(requirements: str) -> bool:
+    """Fast pre-check to detect mandatory Finnish language requirement in job posting."""
+    if not requirements:
+        return False
+    clean = requirements[:4000].strip()
+    return bool(re.search(
+        r'\b(?:suomen\s+(?:kiel[a-z]*|ja\s+englannin\s+kielen)|sujuva[a-z]*\s+suom[a-z]*|kielitaitovaatimus[a-z]*|edellyt[a-z]*\s+suomen|vaadi[a-z]*\s+suomen|suomen\s+kielen\s+taito|fluent\s+(?:in\s+)?finnish|mandatory\s+finnish|finnish\s+(?:is\s+)?(?:mandatory|required))\b',
+        clean,
+        re.IGNORECASE
+    ))
+
 def evaluate_role_confidence(
     requirements: str,
     company: str,
