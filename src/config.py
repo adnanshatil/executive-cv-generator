@@ -45,4 +45,4 @@ SCREENING_COOLDOWN_SECONDS = int(os.getenv("SCREENING_COOLDOWN_SECONDS", "300"))
 MIN_CONFIDENCE_THRESHOLD = int(os.getenv("MIN_CONFIDENCE_THRESHOLD", "80"))
 
 # Feature Flags
-CHECK_MANDATORY_FINNISH = os.getenv("CHECK_MANDATORY_FINNISH", "True").lower() in ("true", "1", "yes")
+FINNISH_LANGUAGE_ALLOWED = os.getenv("FINNISH_LANGUAGE_ALLOWED", "False").lower() in ("true", "1", "yes")

@@ -2,7 +2,7 @@ import time
 from .config import (
     SCREENING_COOLDOWN_SECONDS,
     MIN_CONFIDENCE_THRESHOLD,
-    CHECK_MANDATORY_FINNISH
+    FINNISH_LANGUAGE_ALLOWED
 )
 from .utils import load_source_file
 from .google_services import (
@@ -21,9 +21,9 @@ def run_screening():
        - Only checks within the current batch of newly scraped jobs.
        - If multiple jobs share identical (Company, Role), keeps the first one for evaluation
          and immediately marks subsequent duplicates as 'Discarded' (skipping LLM call).
-    2. Mandatory Finnish Language Check:
-       - If newly scraped and Finnish is mandatory: skips confidence calculation, leaves
-         confidence blank, and keeps status as 'Scraped' (zero LLM token waste).
+    2. Finnish Language Filter (when FINNISH_LANGUAGE_ALLOWED is False):
+       - If job title contains Finnish words (e.g. 'arkkitehti') or description requires
+         mandatory Finnish: immediately marks as 'Discarded' and skips confidence calculation.
        - If user manually set status to 'Cal. Confidence': forces full confidence evaluation
          regardless of language.
     3. Confidence Evaluation via Ollama:
@@ -87,13 +87,16 @@ def run_screening():
         else:
             requirements_text = f"Company: {company}\nRole: {role}"
 
-        # 2. Finnish Language Pre-Check:
-        # If automatic scrape and Finnish is required, do NOT calculate confidence; immediately leave as 'Scraped'.
-        # If user manually changed status to 'Cal. Confidence', bypass this check and proceed to calculate!
-        if CHECK_MANDATORY_FINNISH and not is_manual:
-            if is_mandatory_finnish_required(requirements_text):
-                print(f"   🇫🇮 Mandatory Finnish language detected in requirements. Skipping confidence calculation ➔ Keeping Status: 'Scraped'")
-                update_job_confidence_and_status(row_num, "", "Scraped")
+        # 2. Finnish Language Filter:
+        # When FINNISH_LANGUAGE_ALLOWED is False and not manually triggered:
+        # If job title contains Finnish words or description requires mandatory Finnish,
+        # immediately mark status as 'Discarded' and skip confidence calculation.
+        # If user manually changed status to 'Cal. Confidence', bypass this check and calculate!
+        if not FINNISH_LANGUAGE_ALLOWED and not is_manual:
+            if is_mandatory_finnish_required(requirements_text, role_title=role):
+                print(f"   🇫🇮 Finnish requirement detected in title/requirements ('{role}'). FINNISH_LANGUAGE_ALLOWED=False ➔ Status: 'Discarded' (Skipping LLM)")
+                update_job_confidence_and_status(row_num, "", "Discarded")
+                discarded_count += 1
                 finnish_flag_count += 1
                 continue
 
@@ -105,7 +108,7 @@ def run_screening():
                 role=role,
                 tech_source=tech_src,
                 exp_source=exp_src,
-                check_language=False if is_manual else CHECK_MANDATORY_FINNISH
+                check_language=not FINNISH_LANGUAGE_ALLOWED if not is_manual else False
             )
             confidence = eval_result["confidence"]
             reason = eval_result.get("reason", "")
@@ -137,7 +140,7 @@ def run_screening():
             print(f"   ⏳ Cooldown: Pausing {mins:.1f} mins to protect CPU thermals before next evaluation...")
             time.sleep(SCREENING_COOLDOWN_SECONDS)
 
-    print(f"\n🎉 Screening Complete! {approved_count} marked 'Generate CV', {finnish_flag_count} kept 'Scraped' (Mandatory Finnish), {discarded_count} marked 'Discarded'.")
+    print(f"\n🎉 Screening Complete! {approved_count} marked 'Generate CV', {finnish_flag_count} discarded for Finnish requirement, {discarded_count} total marked 'Discarded'.")
     print("   ℹ️ Note: Discarded items are preserved for review and will be purged during the 3:00 AM cycle.")
     return approved_count, discarded_count
 

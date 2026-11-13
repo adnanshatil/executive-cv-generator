@@ -177,8 +177,23 @@ Adnan Shatil"""
         num_ctx=4096
     )
 
-def is_mandatory_finnish_required(requirements: str) -> bool:
-    """Fast pre-check to detect mandatory Finnish language requirement in job posting."""
+FINNISH_TITLE_PATTERN = r'(?i)(?:^|[\s\-_/])(?:arkkitehti|kehitt[aä]j[aä]|asiantuntija|p[aä][aä]llikk[oö]|johtaja|insin[oö][oö]ri|konsultti|vastaava|suunnittelija|hallinnoija|valvoja|vet[aä]j[aä]|erityisasiantuntija|erikoisasiantuntija|tietoarkkitehti|ratkaisuarkkitehti|kokonaisarkkitehti|pilviarkkitehti|j[aä]rjestelm[aä]asiantuntija|integraatioasiantuntija)(?:[\s\-_/]|$)'
+
+def is_finnish_role_title(role_title: str) -> bool:
+    """Detects if a job title contains Finnish words (e.g. ServiceNow-arkkitehti, Ratkaisuarkkitehti)."""
+    if not role_title:
+        return False
+    return bool(re.search(FINNISH_TITLE_PATTERN, role_title.strip()))
+
+def is_mandatory_finnish_required(requirements: str, role_title: str = "") -> bool:
+    """
+    Detects if Finnish language is required either via:
+    1. Finnish job title words (e.g. 'arkkitehti', 'kehittäjä', 'asiantuntija')
+    2. Explicit requirement phrases in job description
+    """
+    if role_title and is_finnish_role_title(role_title):
+        return True
+
     if not requirements:
         return False
     clean = requirements[:4000].strip()
