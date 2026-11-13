@@ -141,7 +141,7 @@ def run_screening():
             time.sleep(SCREENING_COOLDOWN_SECONDS)
 
     print(f"\n🎉 Screening Complete! {approved_count} marked 'Generate CV', {finnish_flag_count} discarded for Finnish requirement, {discarded_count} total marked 'Discarded'.")
-    print("   ℹ️ Note: Discarded items are preserved for review and will be purged during the 3:00 AM cycle.")
+    print("   ℹ️ Note: Discarded items are preserved for review and will be purged during the 2:00 AM cycle.")
     return approved_count, discarded_count
 
 if __name__ == "__main__":
