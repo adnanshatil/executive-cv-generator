@@ -177,19 +177,68 @@ Adnan Shatil"""
         num_ctx=4096
     )
 
-FINNISH_TITLE_PATTERN = r'(?i)(?:^|[\s\-_/])(?:arkkitehti|kehitt[aä]j[aä]|asiantuntija|p[aä][aä]llikk[oö]|johtaja|insin[oö][oö]ri|konsultti|vastaava|suunnittelija|hallinnoija|valvoja|vet[aä]j[aä]|erityisasiantuntija|erikoisasiantuntija|tietoarkkitehti|ratkaisuarkkitehti|kokonaisarkkitehti|pilviarkkitehti|j[aä]rjestelm[aä]asiantuntija|integraatioasiantuntija)(?:[\s\-_/]|$)'
+FINNISH_TITLE_STEMS = [
+    r"arkkiteh",          # arkkitehti, arkkitehtuurin, ratkaisuarkkitehti
+    r"kehitt[aä]",        # kehittäjä, kehityspäällikkö, sovelluskehittäjä
+    r"asiantuntij",       # asiantuntija, erityisasiantuntija, ICT-asiantuntija
+    r"p[aä][aä]llikk",    # päällikkö, projektipäällikkö, kehityspäällikkö, palvelupäällikkö
+    r"johtaj",            # johtaja, tekninen johtaja, toimitusjohtaja
+    r"insin[oö][oö]r",    # insinööri, diplomi-insinööri
+    r"konsultt",          # konsultti, ratkaisukonsultti
+    r"suunnittelij",      # suunnittelija, pääsuunnittelija
+    r"hallinnoi",         # hallinnoija, järjestelmähallinnoija
+    r"valvoj",            # valvoja
+    r"vet[aä]j",          # vetäjä, tiiminvetäjä
+    r"vastaav",           # vastaava
+    r"omistaj",           # tuoteomistaja, omistaja
+    r"koordinaattor",     # koordinaattori
+    r"neuvonantaj",       # neuvonantaja
+    r"yll[aä]pit[aä]",    # ylläpitäjä, ylläpito
+    r"ohjelmoij",         # ohjelmoija
+    r"kouluttaj",         # kouluttaja
+    r"tutkij",            # tutkija
+    r"tekninen",          # tekninen johtaja, tekninen asiantuntija
+    r"hankke",            # hankkeiden, hankepäällikkö
+    r"j[aä]rjestelm",     # järjestelmäasiantuntija, järjestelmäkehittäjä
+    r"ratkaisu",          # ratkaisuarkkitehti, ratkaisukonsultti
+    r"liiketoiminn",      # liiketoiminta, liiketoiminnan
+    r"palvelu",           # palvelupäällikkö, palveluvastaava
+    r"tietoturv",         # tietoturva-asiantuntija
+    r"teko[aä]ly",        # tekoälykehittäjä, tekoälyasiantuntija
+    r"ohjelmisto",        # ohjelmistokehittäjä, ohjelmistoarkkitehti
+    r"sovellu",           # sovelluskehittäjä, sovellusalustat
+    r"\bja\b",            # 'Data- ja analytiikkahankkeiden'
+    r"\btai\b",           # 'X tai Y'
+    r"\bsek[aä]\b",       # 'sekä'
+]
+FINNISH_TITLE_PATTERN = re.compile(r"(?i)(?:" + "|".join(FINNISH_TITLE_STEMS) + r")")
+
+FINNISH_TEXT_INDICATORS = re.compile(
+    r"\b(?:"
+    # Explicit requirements
+    r"suomen\s+(?:kiel[a-z]*|ja\s+englannin\s+kielen)|sujuva[a-z]*\s+suom[a-z]*|"
+    r"kielitaitovaatimus[a-z]*|edellyt[a-z]*\s+suomen|vaadi[a-z]*\s+suomen|"
+    r"suomen\s+kielen\s+taito|fluent\s+(?:in\s+)?finnish|mandatory\s+finnish|"
+    r"finnish\s+(?:is\s+)?(?:mandatory|required)|"
+    # Characteristic Finnish job posting vocabulary
+    r"etsimme|tarjoamme|edellyt[aä]mme|odotamme|toivomme|teht[aä]v[aä]ss[aä]|"
+    r"ty[oö]skentelet|hakijalta|osaamista|kokemusta|sijainti|toimitamme|"
+    r"asiakkaillemme|koulutusta|ty[oö]teht[aä]v[aä]|ty[oö]yhteis[oö]"
+    r")\b",
+    re.IGNORECASE
+)
 
 def is_finnish_role_title(role_title: str) -> bool:
-    """Detects if a job title contains Finnish words (e.g. ServiceNow-arkkitehti, Ratkaisuarkkitehti)."""
+    """Detects if a job title contains Finnish words or compounds (e.g. ServiceNow-arkkitehti, projektipäällikkö)."""
     if not role_title:
         return False
-    return bool(re.search(FINNISH_TITLE_PATTERN, role_title.strip()))
+    return bool(FINNISH_TITLE_PATTERN.search(role_title.strip()))
 
 def is_mandatory_finnish_required(requirements: str, role_title: str = "") -> bool:
     """
     Detects if Finnish language is required either via:
-    1. Finnish job title words (e.g. 'arkkitehti', 'kehittäjä', 'asiantuntija')
-    2. Explicit requirement phrases in job description
+    1. Finnish job title words/compounds (e.g. 'arkkitehti', 'projektipäällikkö', 'asiantuntija')
+    2. Explicit requirement phrases or posting written in Finnish
     """
     if role_title and is_finnish_role_title(role_title):
         return True
@@ -197,11 +246,7 @@ def is_mandatory_finnish_required(requirements: str, role_title: str = "") -> bo
     if not requirements:
         return False
     clean = requirements[:4000].strip()
-    return bool(re.search(
-        r'\b(?:suomen\s+(?:kiel[a-z]*|ja\s+englannin\s+kielen)|sujuva[a-z]*\s+suom[a-z]*|kielitaitovaatimus[a-z]*|edellyt[a-z]*\s+suomen|vaadi[a-z]*\s+suomen|suomen\s+kielen\s+taito|fluent\s+(?:in\s+)?finnish|mandatory\s+finnish|finnish\s+(?:is\s+)?(?:mandatory|required))\b',
-        clean,
-        re.IGNORECASE
-    ))
+    return bool(FINNISH_TEXT_INDICATORS.search(clean))
 
 def evaluate_role_confidence(
     requirements: str,

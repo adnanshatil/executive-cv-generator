@@ -11,7 +11,11 @@ from .google_services import (
     update_job_confidence_and_status,
     download_text_from_drive
 )
-from .agents import evaluate_role_confidence, is_mandatory_finnish_required
+from .agents import (
+    evaluate_role_confidence,
+    is_mandatory_finnish_required,
+    is_finnish_role_title
+)
 
 def run_screening():
     """
@@ -76,7 +80,16 @@ def run_screening():
         trigger_type = "Manual 'Cal. Confidence'" if is_manual else "Automatic 'Scraped'"
         print(f"[{idx + 1}/{total}] Evaluating ({trigger_type}): {company} - {role} ({linkedin_id})")
 
-        # 1. Fetch Job Description text from Drive
+        # 1. Fast Finnish Title Check (skips Drive download & LLM entirely)
+        if not FINNISH_LANGUAGE_ALLOWED and not is_manual:
+            if is_finnish_role_title(role):
+                print(f"[{idx + 1}/{total}] 🇫🇮 Finnish role title detected ('{role}'). FINNISH_LANGUAGE_ALLOWED=False ➔ Status: 'Discarded' (Skipping LLM)")
+                update_job_confidence_and_status(row_num, "", "Discarded")
+                discarded_count += 1
+                finnish_flag_count += 1
+                continue
+
+        # 2. Fetch Job Description text from Drive
         requirements_text = ""
         if info_link:
             try:
@@ -87,20 +100,17 @@ def run_screening():
         else:
             requirements_text = f"Company: {company}\nRole: {role}"
 
-        # 2. Finnish Language Filter:
-        # When FINNISH_LANGUAGE_ALLOWED is False and not manually triggered:
-        # If job title contains Finnish words or description requires mandatory Finnish,
-        # immediately mark status as 'Discarded' and skip confidence calculation.
-        # If user manually changed status to 'Cal. Confidence', bypass this check and calculate!
+        # 3. Finnish Language Check on Requirements Text:
+        # If job description contains Finnish language requirements or is written in Finnish:
         if not FINNISH_LANGUAGE_ALLOWED and not is_manual:
             if is_mandatory_finnish_required(requirements_text, role_title=role):
-                print(f"   🇫🇮 Finnish requirement detected in title/requirements ('{role}'). FINNISH_LANGUAGE_ALLOWED=False ➔ Status: 'Discarded' (Skipping LLM)")
+                print(f"   🇫🇮 Finnish requirement detected in description ('{role}'). FINNISH_LANGUAGE_ALLOWED=False ➔ Status: 'Discarded' (Skipping LLM)")
                 update_job_confidence_and_status(row_num, "", "Discarded")
                 discarded_count += 1
                 finnish_flag_count += 1
                 continue
 
-        # 3. Evaluate Confidence via Ollama using master source files
+        # 4. Evaluate Confidence via Ollama using master source files
         try:
             eval_result = evaluate_role_confidence(
                 requirements=requirements_text,
@@ -112,25 +122,33 @@ def run_screening():
             )
             confidence = eval_result["confidence"]
             reason = eval_result.get("reason", "")
+            mandatory_finnish = eval_result.get("mandatory_finnish", False)
         except Exception as e:
             print(f"   ❌ Error evaluating confidence: {e}. Defaulting to 50% Discarded.")
             confidence = 50
             reason = f"Evaluation error: {e}"
+            mandatory_finnish = False
 
-        # 4. Apply Decision Threshold
+        # 5. Apply Decision Threshold (and check if LLM flagged mandatory Finnish)
         confidence_str = f"{confidence}%"
-        if confidence >= MIN_CONFIDENCE_THRESHOLD:
+        if mandatory_finnish and not FINNISH_LANGUAGE_ALLOWED and not is_manual:
+            new_status = "Discarded"
+            discarded_count += 1
+            finnish_flag_count += 1
+            print(f"   🇫🇮 LLM flagged mandatory Finnish requirement ➔ Status: 'Discarded' (Skipping CV generation)")
+            update_job_confidence_and_status(row_num, "", new_status)
+        elif confidence >= MIN_CONFIDENCE_THRESHOLD:
             new_status = "Generate CV"
             approved_count += 1
             icon = "✅"
             print(f"   {icon} Confidence: {confidence_str} ➔ Status: '{new_status}'")
+            update_job_confidence_and_status(row_num, confidence_str, new_status)
         else:
             new_status = "Discarded"
             discarded_count += 1
             icon = "🗑️"
             print(f"   {icon} Confidence: {confidence_str} ➔ Status: '{new_status}'")
-
-        update_job_confidence_and_status(row_num, confidence_str, new_status)
+            update_job_confidence_and_status(row_num, confidence_str, new_status)
         if reason:
             print(f"      Reason: {reason}")
 
